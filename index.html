@@ -1,0 +1,2369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beat the Crowd — World Cup Edition · Scripted Demo</title>
+<style>
+  /* ===========================================================================
+     MOBILE-FIRST. Base rules target a 390px phone (iPhone standard width).
+     The min-width:760px block layers on laptop / TV-leaderboard niceties.
+     No :hover states anywhere — this is a touch-first demo.
+     =========================================================================== */
+  :root{
+    --bg:#0a0f1f; --panel:#121a30; --panel2:#0e1528; --line:#223052;
+    --ink:#eaf0ff; --dim:#93a2c6; --gold:#f4c542; --green:#2fbf71;
+    --red:#ef5e5e; --arg:#6cb4ee; --fra:#c7d0e3; --accent:#5b8cff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex; flex-direction:column; min-height:100vh;
+    -webkit-text-size-adjust:100%; -webkit-tap-highlight-color:transparent;
+  }
+  header.top{
+    display:flex; align-items:center; gap:12px; padding:14px 16px;
+    background:linear-gradient(180deg,#13203f,#0c1226); border-bottom:1px solid var(--line);
+    flex-wrap:wrap;
+  }
+  .brand{display:flex; flex-direction:column}
+  .brand b{font-size:20px; letter-spacing:.3px; line-height:1.2}
+  .brand span{font-size:13px; color:var(--gold); font-style:italic}
+  .views{margin-left:auto; display:flex; gap:8px}
+  .views button{
+    background:var(--panel); color:var(--dim); border:1px solid var(--line);
+    min-height:52px; padding:10px 18px; border-radius:999px; cursor:pointer;
+    font-weight:600; font-size:15px;
+  }
+  .views button.active{background:var(--accent); color:#fff; border-color:var(--accent)}
+  main{flex:1; overflow:auto; padding:16px; display:flex; justify-content:center}
+  .stage{width:100%; max-width:920px}
+
+  /* Presenter control bar — collapsed by default to maximise patron view */
+  footer.presenter{
+    display:flex; flex-direction:column; gap:10px; padding:10px 14px;
+    background:#0c1226; border-top:1px solid var(--line);
+  }
+  .pbar-min{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .pbar-more{
+    display:none; align-items:center; gap:10px; flex-wrap:wrap;
+    padding-top:10px; border-top:1px solid var(--line);
+  }
+  footer.presenter.open .pbar-more{display:flex}
+  footer.presenter.open .pstatus-mini{display:none}
+  .pbar-toggle{margin-left:auto}
+  .pstatus-mini{font-size:13px; color:var(--dim); width:100%}
+  .pstatus-mini b{color:var(--ink)}
+  footer .tag{font-size:12px; text-transform:uppercase; letter-spacing:.12em; color:var(--dim)}
+  footer button{
+    background:var(--panel); color:var(--ink); border:1px solid var(--line);
+    min-height:52px; padding:10px 16px; border-radius:10px; cursor:pointer;
+    font-weight:600; font-size:15px;
+  }
+  footer button:disabled{opacity:.4; cursor:not-allowed}
+  footer button.primary{background:var(--green); border-color:var(--green); color:#04210f}
+  footer .spd{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+  footer .spd button{min-height:46px; padding:8px 14px}
+  footer .spd button.on{background:var(--gold); color:#241c00; border-color:var(--gold)}
+  footer .pinput{
+    background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:10px 12px; font-size:15px; min-height:46px; width:70px;
+  }
+  footer .status{font-size:14px; color:var(--dim); text-align:left; width:100%}
+  footer .status b{color:var(--ink)}
+
+  /* Generic */
+  h2{font-size:22px; margin-bottom:6px; line-height:1.25}
+  h3{font-size:16px; color:var(--dim); text-transform:uppercase; letter-spacing:.08em; margin:20px 0 10px}
+  p.lede{color:var(--dim); margin-bottom:18px; font-size:16px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px}
+  .grid{display:grid; gap:12px}
+  .g2,.g3,.g4{grid-template-columns:1fr 1fr}
+  .capgrid{grid-template-columns:1fr 1fr}
+  .pick{
+    background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+    padding:16px; cursor:pointer; min-height:64px;
+  }
+  .pick.sel{border-color:var(--gold); background:#1a2138; box-shadow:0 0 0 1px var(--gold) inset}
+  .pick .nm{font-weight:700; font-size:17px}
+  .pick .meta{font-size:13px; color:var(--dim); margin-top:4px}
+  .pick.cap{display:flex; flex-direction:column}
+  .pick.cap .cap-row{display:flex; align-items:center; justify-content:space-between;
+    gap:10px; margin-top:auto; padding-top:12px}
+  .cap-pos{text-transform:uppercase; letter-spacing:.06em; font-weight:700}
+  .capbtn{background:var(--accent); color:#fff; border:none; min-height:46px;
+    padding:8px 18px; border-radius:9px; font-weight:800; font-size:14px; cursor:pointer}
+  .capbtn.on{background:var(--gold); color:#241c00}
+  .tierbadge{font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px; letter-spacing:.05em}
+  .GOLD{background:#5a4500; color:var(--gold)}
+  .SILVER{background:#3a4254; color:#cdd6e8}
+  .BRONZE{background:#4a2f12; color:#e0a06a}
+  .teamtag{font-size:11px; font-weight:800; padding:2px 7px; border-radius:4px}
+  .ARG{background:#16324f; color:var(--arg)}
+  .FRA{background:#2a2f3d; color:var(--fra)}
+  .btnrow{display:flex; flex-direction:column; gap:12px; margin-top:20px}
+  .btn{background:var(--accent); color:#fff; border:none; min-height:52px;
+    padding:14px 20px; border-radius:10px; font-weight:700; cursor:pointer;
+    font-size:17px; width:100%}
+  .btn.ghost{background:transparent; border:1px solid var(--line); color:var(--dim)}
+  .btn:disabled{opacity:.4; cursor:not-allowed}
+  .chip{display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    background:var(--panel2); border:1px solid var(--line); padding:12px 18px;
+    border-radius:999px; cursor:pointer; font-size:15px; min-height:48px;
+    touch-action:manipulation;        /* R7 BUG 2: suppress iOS double-tap zoom */
+    -webkit-tap-highlight-color:transparent}
+  .chip.sel{border-color:var(--gold); color:var(--gold); background:#1a2138}
+  .stepper{display:flex; align-items:center; gap:16px}
+  .stepper button{width:52px; height:52px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--ink); font-size:24px; cursor:pointer}
+  .stepper .val{font-size:26px; font-weight:800; min-width:36px; text-align:center}
+  .note{font-size:14px; color:var(--dim); margin-top:8px}
+  .pillrow{display:flex; gap:10px; flex-wrap:wrap; margin-top:8px}
+
+  /* Bonus prediction cards (one per row, point value shown) */
+  .bonus-intro{font-size:15px; color:var(--ink); background:#1a2138;
+    border:1px solid var(--gold); border-radius:10px; padding:11px 14px; margin:6px 0 6px}
+  .bonus{background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+    padding:14px; margin-top:12px}
+  .bonus-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px}
+  .bonus-q{font-weight:700; font-size:16px}
+  .bonus-pts{font-size:12px; font-weight:800; color:var(--gold); white-space:nowrap;
+    background:#241c00; padding:5px 11px; border-radius:999px}
+
+  /* TV view — readable from 6 feet on a laptop */
+  .scoreboard{
+    background:linear-gradient(180deg,#15264a,#0b132a);
+    border:1px solid var(--line); border-radius:16px; padding:22px; text-align:center;
+  }
+  .sbteams{display:flex; align-items:center; justify-content:center; gap:24px}
+  .sbteams .t{font-size:30px; font-weight:800}
+  .sbteams .sc{font-size:64px; font-weight:900; letter-spacing:2px}
+  .sbclock{margin-top:8px; color:var(--gold); font-weight:800; letter-spacing:.1em; font-size:22px}
+  .ticker{margin-top:16px; background:var(--panel2); border:1px solid var(--line);
+    border-radius:10px; padding:12px 16px; max-height:160px; overflow:auto; text-align:left; font-size:16px}
+  .ticker div{padding:5px 0; border-bottom:1px dashed #1d2a45}
+  .ticker div:last-child{border:0}
+  .ticker .m{color:var(--gold); font-weight:800; margin-right:8px}
+  table.lb{width:100%; border-collapse:collapse; margin-top:10px; font-size:18px}
+  table.lb th,table.lb td{padding:12px 10px; text-align:left; border-bottom:1px solid var(--line)}
+  table.lb th{color:var(--dim); text-transform:uppercase; font-size:13px; letter-spacing:.06em}
+  table.lb td.num{text-align:right; font-variant-numeric:tabular-nums; font-size:19px; font-weight:700}
+  table.lb tr.me{background:#172447}
+  table.lb tr.me td:first-child{box-shadow:inset 3px 0 0 var(--gold)}
+  .rk{color:var(--dim); width:30px}
+  .capdot{font-size:13px; color:var(--gold); display:block; margin-top:2px}
+
+  /* Overlay window */
+  .scrim{position:fixed; inset:0; background:rgba(4,8,18,.82); display:flex;
+    align-items:center; justify-content:center; padding:16px; z-index:50}
+  /* R9 FIX 2 — flex column .window. Window is a flex container; .window-scroll
+     holds scrollable content, .window-footer holds the Submit/btnrow (+
+     countdown) outside the scroll region. Removes sticky-positioning quirks
+     that were unreliable on real iPhone Safari (v7.1–v7.3). */
+  .window{background:var(--panel); border:1px solid var(--gold); border-radius:18px;
+    width:100%; max-width:560px; max-height:92vh;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+    display:flex; flex-direction:column}
+  .window-scroll{flex:1 1 auto; overflow-y:auto;
+    padding:20px 20px 12px; min-height:0}    /* min-height:0 required for flex children that scroll */
+  .window-footer{flex:0 0 auto; padding:12px 20px 16px;
+    border-top:1px solid var(--line); background:var(--panel)}
+  .window-footer .btnrow{margin-top:0}
+  /* R8.1 Fix A — body-scroll-lock pattern. iOS Safari ignores
+     overscroll-behavior on scroll containers inside position:fixed parents
+     (like .scrim → .window), so we lock the body instead. */
+  body.overlay-open{position:fixed; left:0; right:0; overflow:hidden}
+  .window .wt{font-size:13px; letter-spacing:.16em; color:var(--gold); text-transform:uppercase}
+  .window h2{margin:8px 0 4px}
+  .countbar{height:10px; background:var(--panel2); border-radius:999px; overflow:hidden; margin:16px 0}
+  .countbar i{display:block; height:100%; background:var(--gold); transition:width .25s linear}
+  .countnum{text-align:right; font-weight:800; color:var(--gold); font-size:15px}
+  .hidden{display:none !important}
+  .kv{display:flex; justify-content:space-between; gap:12px; padding:8px 0;
+    border-bottom:1px dashed #1d2a45; font-size:15px}
+  .kv b{font-variant-numeric:tabular-nums}
+  .bigtot{font-size:40px; font-weight:900; color:var(--gold)}
+  .muted{color:var(--dim)}
+  .ok{color:var(--green)} .bad{color:var(--red)}
+  .m{color:var(--gold); font-weight:800; margin-right:6px}
+  .banner{background:#1a2138; border:1px solid var(--gold); border-radius:10px;
+    padding:12px 16px; font-size:15px; margin-bottom:16px}
+  /* "What's happening right now" one-liner — urgent, scannable, secondary to
+     the window title. One sentence; never names point values. */
+  .nowctx{font-size:14.5px; line-height:1.45; color:var(--ink);
+    background:#241c00; border-left:3px solid var(--gold); border-radius:8px;
+    padding:10px 13px; margin:6px 0 14px; font-weight:600}
+
+  /* Hard-stop interstitials — full-window broadcast moments (GOAL!,
+     SUBSTITUTION, FULL TIME). Bold, scannable, no decision required. */
+  .interstitial{text-align:center; padding:14px 0}
+  .interstitial .hd{font-size:48px; font-weight:900; color:var(--gold);
+    letter-spacing:.08em; line-height:1.05}
+  .interstitial .hd.sm{font-size:30px}
+  .interstitial .team{font-size:20px; font-weight:700; margin-top:8px}
+  .interstitial .sc{font-size:54px; font-weight:900; margin:10px 0 4px;
+    font-variant-numeric:tabular-nums; letter-spacing:2px}
+  .interstitial .meta{color:var(--dim); font-size:14px; margin-top:6px}
+  .interstitial .sub-row{margin-top:12px; font-size:18px; text-align:center}
+  .interstitial .sub-row .lab{display:inline-block; min-width:46px;
+    text-align:center; margin-right:10px; font-weight:800; font-size:12px;
+    letter-spacing:.1em; padding:3px 8px; border-radius:5px}
+  .interstitial .sub-row .lab.off{color:var(--red); background:#2a1518}
+  .interstitial .sub-row .lab.on{color:var(--green); background:#0f2a1c}
+
+  /* Rules content — shared across Rules_A/B/C preview variants. Compact set
+     adds .compact modifier for the tighter-copy variant (C). */
+  .rules h3{font-size:13px; color:var(--gold); text-transform:uppercase;
+    letter-spacing:.08em; margin:14px 0 6px}
+  .rules h3:first-child{margin-top:0}
+  .rules ul{list-style:none; padding:0; margin:0}
+  .rules li{font-size:14px; line-height:1.45; padding:4px 0 4px 14px; position:relative}
+  .rules li::before{content:"•"; color:var(--gold); position:absolute; left:0; top:4px}
+  .rules .keynote{background:#241c00; border-left:3px solid var(--gold);
+    border-radius:8px; padding:10px 13px; margin-top:14px; font-size:14px;
+    line-height:1.45; font-weight:700}
+  .rules.compact h3{margin:10px 0 4px; font-size:12px}
+  .rules.compact h3:first-child{margin-top:0}
+  .rules.compact li{font-size:13px; line-height:1.35; padding:2px 0 2px 13px}
+  .rules.compact li::before{top:2px}
+  .rules.compact .keynote{font-size:13px; padding:8px 12px; margin-top:10px}
+  /* Dev-only preview link strip on the welcome screen */
+  .devbar{margin-top:14px; padding-top:10px; border-top:1px dashed var(--line);
+    font-size:12px; color:var(--dim); text-align:center}
+  .devbar .lbl{margin-right:4px}
+  .devbar a{color:var(--gold); text-decoration:none; cursor:pointer; padding:4px 9px;
+    font-weight:800; border:1px solid var(--line); border-radius:6px; margin:0 2px;
+    display:inline-block}
+  /* R4 Item 3 — persistent help button + modal */
+  .views .helpbtn{
+    background:var(--panel); color:var(--gold); border:1px solid var(--line);
+    min-width:44px; width:44px; min-height:44px; height:44px; padding:0;
+    border-radius:50%; font-weight:900; font-size:18px;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .helpscrim{position:fixed; inset:0; background:rgba(4,8,18,.92);
+    display:flex; align-items:center; justify-content:center;
+    padding:14px; z-index:100}
+  .helpscrim .window{max-width:560px; max-height:92vh}
+
+  /* "vs. the field" bar — patron score versus the 8-player field. Color is
+     rank-based (top 25% green, bottom 25% red, middle gradient). */
+  .scorebar{margin:6px 0 12px}
+  .scorebar-track{height:10px; background:var(--panel2); border:1px solid var(--line);
+    border-radius:999px; overflow:hidden}
+  .scorebar-fill{height:100%; transition:width .3s}
+  .scorebar-label{font-size:13px; color:var(--dim); margin-top:6px;
+    display:flex; justify-content:space-between; gap:8px}
+  .scorebar-label b{color:var(--ink); font-weight:700}
+
+  /* QR — Scan to play */
+  .qrwrap{text-align:center}
+  .qrbox{background:#fff; display:inline-block; padding:16px; border-radius:12px; margin:14px 0}
+  .qrbox canvas{display:block; image-rendering:pixelated; width:260px; height:260px}
+  .qrlabel{font-size:22px; font-weight:800; letter-spacing:.04em; margin-top:4px}
+  .qrurl{font-size:14px; color:var(--dim); word-break:break-all; margin-top:6px}
+  .qrinput{width:100%; background:var(--panel2); color:var(--ink);
+    border:1px solid var(--line); border-radius:9px; padding:12px; font-size:16px;
+    min-height:52px; margin-top:6px}
+  .qrerr{color:var(--red); font-size:14px; margin-top:8px; line-height:1.45;
+    background:#2a1518; border:1px solid var(--red); border-radius:8px; padding:10px 12px}
+
+  /* Laptop / wider screens (patron build is comfortable; TV view is for the room) */
+  @media (min-width:760px){
+    main{padding:24px}
+    .brand b{font-size:18px}
+    .brand span{font-size:12px}
+    footer .status{width:auto; margin-left:auto; text-align:right}
+    .g2{grid-template-columns:1fr 1fr}
+    .g3{grid-template-columns:1fr 1fr 1fr}
+    .g4{grid-template-columns:repeat(4,1fr)}
+    .capgrid{grid-template-columns:1fr 1fr 1fr}
+    .btnrow{flex-direction:row; flex-wrap:wrap}
+    .btn{width:auto}
+    .sbteams .sc{font-size:76px}
+    .sbteams .t{font-size:34px}
+    table.lb{font-size:21px}
+    table.lb td.num{font-size:22px}
+    .qrbox canvas{width:340px; height:340px}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <b>BEAT THE CROWD <span style="color:var(--dim);font-weight:400">· World Cup Edition</span></b>
+    <span>Don't Just Watch. Manage.</span>
+  </div>
+  <div class="views">
+    <button id="vPatron" class="active" onclick="setView('PATRON')">Patron</button>
+    <button id="vTV" onclick="setView('TV')">Leaderboard</button>
+    <button id="helpBtn" class="helpbtn" onclick="openHelp()" aria-label="Rules" title="Rules">?</button>
+  </div>
+</header>
+
+<main><div class="stage" id="stage"></div></main>
+
+<footer class="presenter" id="presenterBar">
+  <!-- Always-visible minimal strip: play/pause/reset reachable in one tap -->
+  <div class="pbar-min">
+    <span class="tag">Presenter</span>
+    <button id="pPlay" class="primary" onclick="presenterPlay()">▶ Play</button>
+    <button id="pPause" onclick="presenterPause()" disabled>❚❚ Pause</button>
+    <button onclick="restartDemo()">↻ Reset</button>
+    <button class="pbar-toggle" id="pToggle" onclick="togglePresenter()"
+      aria-expanded="false">⚙ Controls ▾</button>
+    <div class="pstatus-mini" id="pStatusMini">Building lineup</div>
+  </div>
+  <!-- Expanded controls: no capability removed, only tucked away by default -->
+  <div class="pbar-more">
+    <button id="pNext" onclick="presenterNextEvent()" disabled>Next Event →</button>
+    <button id="pSkip" onclick="presenterSkipWindow()" disabled>Skip window ›</button>
+    <button onclick="openQR()">📷 Scan to play</button>
+    <div class="spd" id="spd"></div>
+    <label class="tag" for="winSecs">Window</label>
+    <input class="pinput" id="winSecs" type="number" min="10" max="600" step="5"
+      value="20" onchange="setWindowSecs(this.value)" title="Decision-window seconds">
+    <div class="status" id="pStatus">Build a lineup to begin.</div>
+  </div>
+</footer>
+
+<div id="overlayRoot"></div>
+<div id="qrRoot"></div>
+<div id="helpRoot"></div>
+
+<script>
+/* ===========================================================================
+   BEAT THE CROWD — WORLD CUP EDITION · Scripted Walkthrough Demo
+   ---------------------------------------------------------------------------
+   Scope (per Developer Brief): a presenter-controlled, single-device walkthrough.
+   - Fake, fixed scripted match (no live data, replays the same every time).
+   - Real V9b scoring rules (values ported verbatim from config.py V9b FINAL).
+   "Fake match, real scoring." Nothing here is calibrated; the rules are.
+
+   R12 — SCORING-PREDICTION PICK BOARDS (this is the demo's written spec for
+   the three behaviours below; keep it in sync with the code):
+   1. CLOCK FREEZE. The scripted game clock is FULLY FROZEN while any pick board
+      ("Who Scores First?" / "Who Scores Next?") is up — the match minute does
+      not advance at all (startClock() skips the tick whenever S.activeWindow is
+      set). It resumes only when the patron Submits a pick OR a visible ~20-second
+      countdown expires (auto-pass — the pick is left empty, scored 0, NO penalty).
+      WINDOW_DURATION_SECONDS is 20 for the demo (the real-game window is 100s).
+      Because the clock is frozen while a board is up, and the scripted goals are
+      spaced (23', 36', 78', 81', 89'), two pick boards can never collide.
+   2. WHO SCORES FIRST? Before the opening kickoff the same board appears labelled
+      "Who Scores First?" (TIMELINE[0] = WHO_SCORES_FIRST, opens before KICKOFF).
+      It is scored identically to WSN, resolved by the first scoring play of the
+      match (GOALS[0]). Every prompt after that is "Who Scores Next?".
+   3. "NO MORE SCORING" OPTION. Both boards expose a selectable "No more scoring"
+      choice (the No-More-Goals / NMG mechanic) — predict no further scoring before
+      the period ends. It is intentionally a visible choice only; the scripted
+      timeline is NOT changed to make it correct, so in this demo it is usually
+      wrong (more goals follow), which is fine. (Primarily a real-game feature.)
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. V9b CONFIG — ported verbatim from config.py (V9b FINAL · LOCKED).
+      Do not tweak values: these are the locked design numbers.
+   --------------------------------------------------------------------------- */
+const CFG = {
+  PP: {
+    winner_or_draw_correct:      {on_time: 60, late: 30},
+    winner_or_draw_wrong:        {on_time: -3, late: -3},
+    exact_score:                 {on_time: 20, late: 10},
+    correct_margin:              {on_time: 12, late: 6},
+    correct_result_wrong_score:  {on_time: 3,  late: 2},
+    over_under_2_5_correct:      {on_time: 8,  late: null},
+    over_under_2_5_wrong:        {on_time: -3, late: null},
+    possession_correct_team:     {on_time: 6,  late: null},
+    more_corners_correct_team:   {on_time: 5,  late: null},
+    any_red_card_in_match:       {on_time: 8,  late: null},
+    yellow_cards_ou_3_5_correct: {on_time: 5,  late: null},
+    yellow_cards_ou_3_5_wrong:   {on_time: -2, late: null},
+    shots_on_target_ou_8_5_correct: {on_time: 5,  late: null},
+    shots_on_target_ou_8_5_wrong:   {on_time: -2, late: null},
+    half_time_switch_correct:    {on_time: 4,  late: 2},
+    half_time_switch_wrong:      {on_time: -8, late: -4},
+  },
+  PP_FORFEIT_ON_HALF_TIME_SWITCH: ["exact_score","correct_margin","correct_result_wrong_score"],
+  FP: {
+    FORWARD:    {goal:7.0, assist:4.0, shot_on_target:1.5, key_pass:1.0},
+    MIDFIELDER: {goal:8.0, assist:4.0, key_pass:{ATT:2.0,DEF:0.0},
+                 att_third_pass:{ATT:0.2,DEF:0.3}, tackle_won:1.0, interception:1.0},
+    DEFENDER:   {goal:10.0, tackle_won:1.0, interception:1.0, clearance:0.15, clean_sheet:0.0},
+    KEEPER:     {goal:10.0, clean_sheet:3.0, save:1.5, goal_conceded:-1.5, penalty_save:10.0},
+  },
+  DEFENDER_CLEARANCE_CAP: 3,
+  CAPTAIN_MULTIPLIER: 1.5,
+  WSN: {correct_team:7, correct_team_and_position:5, scorer_in_lineup_auto_bonus:6,
+        wrong:0, who_scores_first_no_goal_h1:7},
+  // R4 Item 1 — No More Goals (NMG): NEW locked values, added alongside WSN.
+  // Existing WSN values above are NOT modified. NMG tier classified by
+  // (90 − match minute at confirm); see nmgTier() for ranges.
+  NMG: {
+    early: { minutes_remaining: 60,     correct: 15, wrong: -8 },
+    mid:   { minutes_remaining_min: 30, minutes_remaining_max: 59,
+             correct: 10, wrong: -6 },
+    late:  { minutes_remaining_max: 29, correct: 5,  wrong: -3 },
+  },
+  WSN_POSITION_GROUPS: ["FORWARD","MID","DEF","GK","OG"],
+  LINEUP_STRUCTURE: {FORWARD:2, MIDFIELDER:2, DEFENDER:1, KEEPER:1},
+  WINDOW_DURATION_SECONDS: 20,   // R12: demo pick-board countdown (game clock frozen while up). Real-game window is 100s.
+  LATE_ARRIVAL_CUTOFF_MINUTE: 45,
+  TIEBREAKER_ORDER: ["PP","FP","WSN","registration_timestamp"],
+};
+
+/* ---------------------------------------------------------------------------
+   2. PLAYER POOL — fake demo rosters. Argentina (home) vs France (away).
+      mid_style (ATT/DEF) is a developer setup tag; patrons never see it.
+   --------------------------------------------------------------------------- */
+const P = {};
+function mk(id,name,team,pos,tier,extra){ P[id]=Object.assign({id,name,team,pos,tier},extra||{}); }
+// FORWARD (covers wingers + center forwards)
+mk("messi","L. Messi","ARG","FORWARD","GOLD");
+mk("mbappe","K. Mbappé","FRA","FORWARD","GOLD");
+mk("alvarez","J. Álvarez","ARG","FORWARD","SILVER");
+mk("giroud","O. Giroud","FRA","FORWARD","SILVER");
+mk("dimaria","Á. Di María","ARG","FORWARD","BRONZE");
+mk("dembele","O. Dembélé","FRA","FORWARD","BRONZE");
+// MIDFIELDER
+mk("griezmann","A. Griezmann","FRA","MIDFIELDER","GOLD",{mid_style:"ATT"});
+mk("depaul","R. De Paul","ARG","MIDFIELDER","GOLD",{mid_style:"DEF"});
+mk("macallister","A. Mac Allister","ARG","MIDFIELDER","SILVER",{mid_style:"ATT"});
+mk("tchouameni","A. Tchouaméni","FRA","MIDFIELDER","SILVER",{mid_style:"DEF"});
+mk("enzo","Enzo Fernández","ARG","MIDFIELDER","BRONZE",{mid_style:"ATT"});
+mk("rabiot","A. Rabiot","FRA","MIDFIELDER","BRONZE",{mid_style:"DEF"});
+// DEFENDER
+mk("romero","C. Romero","ARG","DEFENDER","GOLD");
+mk("kounde","J. Koundé","FRA","DEFENDER","GOLD");
+mk("otamendi","N. Otamendi","ARG","DEFENDER","SILVER");
+mk("varane","R. Varane","FRA","DEFENDER","SILVER");
+mk("molina","N. Molina","ARG","DEFENDER","BRONZE");
+mk("thernandez","T. Hernández","FRA","DEFENDER","BRONZE");
+// KEEPER (starting GKs)
+mk("emartinez","E. Martínez","ARG","KEEPER","GOLD",{startingGK:true});
+mk("lloris","H. Lloris","FRA","KEEPER","SILVER",{startingGK:true});
+
+const POS_GROUP = {FORWARD:"FORWARD", MIDFIELDER:"MID", DEFENDER:"DEF", KEEPER:"GK"};
+
+/* ---------------------------------------------------------------------------
+   3. THE SCRIPTED MATCH — fixed, replays identically every time.
+      Argentina (home) 3 – 2 France (away). One red card. One key substitution.
+   --------------------------------------------------------------------------- */
+// Goals in order. group = WSN position group of the scorer.
+const GOALS = [
+  {min:23, team:"ARG", scorer:"messi",   group:"FORWARD", assist:"macallister"},
+  {min:36, team:"ARG", scorer:"dimaria", group:"FORWARD", assist:"messi"},
+  {min:78, team:"FRA", scorer:"mbappe",  group:"FORWARD", assist:null, penalty:true},
+  {min:81, team:"FRA", scorer:"mbappe",  group:"FORWARD", assist:"griezmann"},
+  {min:89, team:"ARG", scorer:"alvarez", group:"FORWARD", assist:"messi"},
+];
+
+// Fixed match facts used to grade Prediction Points.
+const FACTS = {
+  resultWinner:"ARG", scoreHome:3, scoreAway:2, margin:1,
+  ou25:"OVER",            // 5 goals
+  possessionTeam:"ARG",   // 54%
+  cornersTeam:"FRA",      // 7–5
+  anyRedCard:true,        // 55' France
+  yellowOU:"OVER",        // 5 yellows vs O/U 3.5
+  sotOU:"OVER",           // O/U 8.5 shots on target
+  homeConceded:2, awayConceded:3, // → no clean sheets either GK
+};
+
+// Non-goal FP events per player (fake but plausible). Settled at full-time.
+const FPE = {
+  messi:{shot_on_target:4,key_pass:3}, mbappe:{shot_on_target:5,key_pass:2},
+  alvarez:{shot_on_target:2,key_pass:1}, dimaria:{shot_on_target:2,key_pass:2},
+  giroud:{shot_on_target:2}, dembele:{shot_on_target:1,key_pass:2},
+  depaul:{tackle_won:3,interception:2,att_third_pass:6},
+  griezmann:{key_pass:4,att_third_pass:5},
+  macallister:{key_pass:2,att_third_pass:4},
+  tchouameni:{tackle_won:2,interception:2,att_third_pass:5},
+  enzo:{key_pass:2,att_third_pass:4}, rabiot:{tackle_won:1,interception:1,att_third_pass:3},
+  romero:{tackle_won:3,interception:2,clearance:5},
+  kounde:{tackle_won:2,interception:1,clearance:4},
+  otamendi:{tackle_won:2,interception:1,clearance:6},
+  varane:{tackle_won:1,interception:2,clearance:3},
+  molina:{tackle_won:1,clearance:2},
+  thernandez:{tackle_won:1,interception:1,clearance:2},
+  emartinez:{save:4,goal_conceded:2}, lloris:{save:5,goal_conceded:3},
+};
+
+// Presenter timeline. Window events pause the scripted clock until resolved.
+// WSN windows resolve against the NEXT goal (or end of match).
+const TIMELINE = [
+  {min:0,  type:"WHO_SCORES_FIRST"},                 // pre-kickoff window
+  {min:0,  type:"KICKOFF"},
+  {min:23, type:"GOAL", gi:0},
+  {min:23, type:"WSN", afterGoal:0},                 // → resolves vs goal 1 (36')
+  {min:36, type:"GOAL", gi:1},
+  {min:36, type:"WSN", afterGoal:1},                 // → resolves vs goal 2 (78')
+  {min:41, type:"SUB_FIRSTHALF",
+           text:"France substitution detected (41'): Dembélé OFF, Kolo Muani ON — minutes 1–44, queued to the Half-Time Switch."},
+  {min:45, type:"HALFTIME"},                          // Half-Time Switch window
+  {min:46, type:"SECONDHALF"},
+  {min:55, type:"RED_CARD",
+           text:"RED CARD — France, T. Hernández (55'). Not replaceable (locked rule): the team plays on with ten."},
+  {min:78, type:"GOAL", gi:2},
+  {min:78, type:"WSN", afterGoal:2},
+  {min:81, type:"GOAL", gi:3},
+  {min:81, type:"WSN", afterGoal:3},
+  {min:89, type:"GOAL", gi:4},
+  {min:89, type:"WSN", afterGoal:4},                  // R6 Option A: WSN fires after every goal
+  {min:90, type:"FULLTIME"},
+];
+
+/* ---------------------------------------------------------------------------
+   4. V9b SCORING ENGINE (operates on the scripted match only)
+   --------------------------------------------------------------------------- */
+function ppVal(key, late){ const v = CFG.PP[key]; if(!v) return 0;
+  const x = late ? v.late : v.on_time; return x==null ? 0 : x; }
+
+// Prediction Points. pred: {winner:'ARG'|'DRAW'|'FRA', ph,pa, ou25,possTeam,
+//   cornersTeam, redCard:bool, yellowOU, sotOU}. ht: {used,newWinner}|null
+// V9b rule: when the Half-Time Switch is used to change W/D, that pick
+// replaces winner_or_draw_* scoring entirely (+4/-8) and forfeits the score
+// cluster. Without a switch, normal W/D + score cluster apply (+60/-3).
+function computePP(pred, arrival){
+  const late = arrival === "late";
+  let pp = 0; const lines = [];
+  const add=(k,n,lbl)=>{ if(n){ pp+=n; lines.push([lbl,n]); } };
+
+  const ht = pred.ht;
+  const switched = !!(ht && ht.used && ht.newWinner && ht.newWinner !== pred.winner);
+  const effWinner = switched ? ht.newWinner : pred.winner;
+  const winnerRight = effWinner === FACTS.resultWinner;
+
+  if(switched){
+    // Switch replaces W/D scoring. Score cluster (PP_FORFEIT_ON_HALF_TIME_SWITCH) zeroed.
+    lines.push(["Score points forfeited (Half-Time Switch used)",0]);
+    add("hts",
+      winnerRight ? ppVal("half_time_switch_correct",late) : ppVal("half_time_switch_wrong",late),
+      winnerRight ? "Half-Time Switch correct" : "Half-Time Switch wrong");
+  } else {
+    add("winner",
+      winnerRight ? ppVal("winner_or_draw_correct",late) : ppVal("winner_or_draw_wrong",late),
+      winnerRight ? "Winner/Draw correct" : "Winner/Draw wrong");
+    if(winnerRight){
+      if(pred.ph===FACTS.scoreHome && pred.pa===FACTS.scoreAway){
+        add("exact", ppVal("exact_score",late), "Exact score (3–2)");
+      } else if((pred.ph-pred.pa) === (FACTS.scoreHome-FACTS.scoreAway)){
+        add("margin", ppVal("correct_margin",late), "Correct margin");
+      } else {
+        add("result", ppVal("correct_result_wrong_score",late), "Correct result, wrong score");
+      }
+    }
+  }
+
+  // Bonus predictions — on-time only (late → unavailable, scored 0).
+  if(!late){
+    const ou=pred.ou25===FACTS.ou25;
+    add("ou25", ou?CFG.PP.over_under_2_5_correct.on_time:CFG.PP.over_under_2_5_wrong.on_time,
+        ou?"Over/Under 2.5 correct":"Over/Under 2.5 wrong");
+    if(pred.possTeam===FACTS.possessionTeam) add("poss",6,"Possession team correct");
+    if(pred.cornersTeam===FACTS.cornersTeam) add("corn",5,"More corners team correct");
+    if(pred.redCard===true && FACTS.anyRedCard) add("red",8,"Any red card — correct");
+    const yo=pred.yellowOU===FACTS.yellowOU;
+    add("yel", yo?5:-2, yo?"Yellow O/U 3.5 correct":"Yellow O/U 3.5 wrong");
+    const so=pred.sotOU===FACTS.sotOU;
+    add("sot", so?5:-2, so?"Shots-on-target O/U 8.5 correct":"Shots-on-target O/U 8.5 wrong");
+  } else {
+    lines.push(["Bonus predictions N/A (late arrival)",0]);
+  }
+  return {total:pp, lines};
+}
+
+// Base FP for one player given an event-count object.
+function basePlayerFP(pl, ev){
+  const t = CFG.FP[pl.pos]; let s = 0;
+  for(const k in ev){
+    const n = ev[k]; if(!n) continue;
+    let rate = t[k]; if(rate===undefined) continue;
+    if(k==="clearance"){ s += Math.min(n, CFG.DEFENDER_CLEARANCE_CAP) * rate; continue; }
+    if(typeof rate === "object"){ rate = rate[pl.mid_style] ?? 0; }  // ATT/DEF split
+    s += n * rate;
+  }
+  return s;
+}
+
+// Collect a player's full-match event counts up to `upto`. FPE settles at FT.
+function playerEvents(pid, upto){
+  const ev = {};
+  GOALS.forEach(g=>{
+    if(g.min>upto) return;
+    if(g.scorer===pid) ev.goal=(ev.goal||0)+1;
+    if(g.assist===pid) ev.assist=(ev.assist||0)+1;
+  });
+  if(upto>=90 && FPE[pid]){ for(const k in FPE[pid]) ev[k]=(ev[k]||0)+FPE[pid][k]; }
+  return ev;
+}
+
+// R9 FIX 1: Manager's Call removed. Every player in the patron's final locked
+// lineup earns FP for the full match.
+// R10 FIX 1: HT-swap-out + Dembélé replacement entries from _htSwappedOut are
+// processed after the main lineup. Each shows their pre-leaveMin FP via
+// playerEvents(pid, leaveMin) with an explicit timing label so the patron
+// sees their first-half contribution.
+function computeFP(entity, upto){
+  let total=0; const lines=[];
+  // Final locked lineup — full-match FP
+  entity.lineup.forEach(pid=>{
+    const pl=P[pid]; if(!pl) return;
+    const ev=playerEvents(pid, upto);
+    let fp=basePlayerFP(pl, ev);
+    if(pid===entity.captainId){
+      fp *= CFG.CAPTAIN_MULTIPLIER;
+      lines.push([pl.name+" (Captain ×1.5)", fp]);
+    } else if(fp){
+      lines.push([pl.name, fp]);
+    }
+    total += fp;
+  });
+  // R10 FIX 1: swapped-off players (HT swap or Dembélé replacement) — first-
+  // half-only FP, shown even if 0 so the patron sees they were in the lineup.
+  (entity._htSwappedOut || []).forEach(({pid, leaveMin}) => {
+    const pl=P[pid]; if(!pl) return;
+    const ev=playerEvents(pid, leaveMin);
+    let fp=basePlayerFP(pl, ev);
+    // R11: keeper goals-conceded for a bounded window. FPE.goal_conceded is
+    // a full-match aggregate (no minute data), so playerEvents(pid, <90)
+    // omits it entirely and returns 0 even when goals were conceded inside
+    // the window. Count actual GOAL events against the keeper's team up to
+    // leaveMin and apply CFG.FP.KEEPER.goal_conceded (locked at -1.5).
+    if(pl.pos === "KEEPER" && leaveMin < 90){
+      const conceded = GOALS.filter(g => g.team !== pl.team && g.min <= leaveMin).length;
+      fp += conceded * CFG.FP.KEEPER.goal_conceded;
+    }
+    // Captain isn't swappable via UI, but defensive multiplier just in case.
+    if(pid===entity.captainId) fp *= CFG.CAPTAIN_MULTIPLIER;
+    const label = leaveMin <= 41 ? `subbed off ${leaveMin}'` : 'swapped off at HT';
+    lines.push([pl.name + ' · ' + label, fp]);
+    total += fp;
+  });
+  return {total, lines};
+}
+
+// WSN windows. Each window: {team, group} pick, or {noGoalH1:true} for the
+// pre-kickoff "Who Scores First?". A window resolves against the NEXT goal.
+// windows: index aligns to [WSF, afterGoal0, afterGoal1, afterGoal2, afterGoal3]
+function wsnTargets(){
+  // returns the goal each window resolves against (or null = no further goal)
+  // R6 Option A: window 5 fires after the last goal (89'); no goal follows,
+  // so its target is null. NMG picks can still score here (correct = no more
+  // goals); team/position picks score 0 at FT.
+  return [GOALS[0], GOALS[1], GOALS[2], GOALS[3], GOALS[4], null];
+}
+// R4 NMG helpers — tier classification by minutes remaining to 90.
+function nmgTier(matchMinute){
+  const rem = 90 - matchMinute;
+  if(rem >= CFG.NMG.early.minutes_remaining) return 'early';
+  if(rem >= CFG.NMG.mid.minutes_remaining_min) return 'mid';
+  return 'late';
+}
+function nmgTierLabel(t){ return t[0].toUpperCase()+t.slice(1); }
+
+function computeWSN(picks, lineup, upto, arrival, joinMin){
+  const tg = wsnTargets(); let total=0; const lines=[];
+  for(let i=0; i<picks.length; i++){
+    const pick = picks[i]; const goal = tg[i];
+    // openMin: when the window opened. WSF at 0; others at the prior goal's minute.
+    // R6 Option A: window 5 opens at GOALS[4].min = 89; its target (tg[5]) is null.
+    const openMin = (i===0) ? 0 : (tg[i-1] ? tg[i-1].min : null);
+    if(openMin == null) continue;
+    if(openMin > upto) continue;                       // window not yet opened
+    if(arrival==="late" && joinMin!=null && openMin<joinMin) continue;
+    if(!pick) continue;
+    let pts=0; const parts=[];
+    if(pick.nmg){
+      // R4 — No More Goals. Correct iff no goal after confirmedAtMin (within upto).
+      const tier = pick.tier || nmgTier(pick.confirmedAtMin != null ? pick.confirmedAtMin : openMin);
+      const v = CFG.NMG[tier];
+      const confirmedAt = pick.confirmedAtMin != null ? pick.confirmedAtMin : openMin;
+      const goalAfter = GOALS.some(g => g.min > confirmedAt && g.min <= upto);
+      if(!goalAfter){ pts = v.correct; parts.push("No more scoring "+tier+" correct +"+v.correct); }
+      else          { pts = v.wrong;   parts.push("No more scoring "+tier+" wrong "+v.wrong); }
+    } else if(pick.noGoalH1){
+      const goalH1 = GOALS.some(g=>g.min<45);
+      if(!goalH1){ pts+=CFG.WSN.who_scores_first_no_goal_h1; parts.push("NO GOAL 1st half +7"); }
+    } else if(goal){
+      // Standard team/position pick — requires the target goal to have happened.
+      if(goal.min > upto) continue;
+      const teamOK = pick.team===goal.team;
+      if(teamOK){ pts+=CFG.WSN.correct_team; parts.push("team +7");
+        if(pick.group===goal.group){ pts+=CFG.WSN.correct_team_and_position; parts.push("position +5"); }
+      }
+      if(lineup.includes(goal.scorer)){ pts+=CFG.WSN.scorer_in_lineup_auto_bonus;
+        parts.push("scorer in lineup +6"); }
+    } else {
+      // R6 Option A: window with no future goal target. Resolve at FT (upto>=90).
+      if(upto < 90) continue;
+      parts.push("no further goal");
+    }
+    total+=pts;
+    const labelMin = (i===0) ? null : (tg[i-1] ? tg[i-1].min : null);
+    lines.push([(i===0 ? "Who Scores First?" : "WSN @"+labelMin+"'"),
+                pts, parts.join(", ")||"wrong (0)"]);
+  }
+  return {total, lines};
+}
+
+function entityTotals(e, upto){
+  const pp = (upto>=90) ? computePP(e.prediction, e.arrival) : {total:0,lines:[]};
+  const fp = computeFP(e, upto);
+  const joinMin = e.arrival==="late" ? CFG.LATE_ARRIVAL_CUTOFF_MINUTE : 0;
+  const wsn = computeWSN(e.wsn||[], e.lineup, upto, e.arrival, joinMin);
+  return {pp:pp.total, fp:fp.total, wsn:wsn.total,
+          total: pp.total+fp.total+wsn.total, _pp:pp, _fp:fp, _wsn:wsn};
+}
+
+/* ---------------------------------------------------------------------------
+   5. SYNTHETIC PATRONS — populate the TV leaderboard so it moves.
+      Deterministic (population seed 42 acknowledged). Same V9b engine.
+   --------------------------------------------------------------------------- */
+function pred(winner,ph,pa,ou,poss,corn,red,yel,sot){
+  return {winner,ph,pa,ou25:ou,possTeam:poss,cornersTeam:corn,redCard:red,
+          yellowOU:yel,sotOU:sot,ht:null};
+}
+function wsnAll(team,group){ return [
+  {team,group},{team,group},{team,group},{team,group},{team,group},{team,group}]; }
+
+const SYN = [
+  {teamName:"Boynton Beach United", captainPos:"MIDFIELDER", captainId:"depaul",
+   lineup:["messi","alvarez","depaul","macallister","romero","emartinez"],
+   prediction:pred("ARG",3,2,"OVER","ARG","FRA",true,"OVER","OVER"),
+   arrival:"on_time", wsn:wsnAll("ARG","FORWARD")},
+  {teamName:"Barstool Ballers", captainPos:"FORWARD", captainId:"messi",
+   lineup:["messi","mbappe","depaul","macallister","romero","emartinez"],
+   prediction:pred("ARG",3,1,"OVER","ARG","ARG",true,"OVER","UNDER"),
+   arrival:"on_time", wsn:wsnAll("ARG","FORWARD")},
+  {teamName:"The Offside Club", captainPos:"DEFENDER", captainId:"romero",
+   lineup:["messi","alvarez","depaul","enzo","romero","emartinez"],
+   prediction:pred("ARG",2,0,"UNDER","ARG","FRA",false,"UNDER","OVER"),
+   arrival:"on_time", wsn:wsnAll("ARG","FORWARD")},
+  {teamName:"Pitch Pirates", captainPos:"MIDFIELDER", captainId:"griezmann",
+   lineup:["mbappe","giroud","griezmann","tchouameni","kounde","lloris"],
+   prediction:pred("FRA",2,1,"OVER","FRA","FRA",true,"OVER","OVER"),
+   arrival:"on_time", wsn:wsnAll("FRA","FORWARD")},
+  {teamName:"Keeper's Union", captainPos:"KEEPER", captainId:"emartinez",
+   lineup:["messi","dimaria","macallister","enzo","otamendi","emartinez"],
+   prediction:pred("DRAW",1,1,"UNDER","ARG","FRA",false,"UNDER","UNDER"),
+   arrival:"on_time",
+   wsn:[{team:"ARG",group:"FORWARD"},{team:"FRA",group:"FORWARD"},
+        {team:"FRA",group:"FORWARD"},{team:"ARG",group:"FORWARD"},
+        {team:"ARG",group:"FORWARD"},null]},
+  {teamName:"The Dark Horses", captainPos:"DEFENDER", captainId:"kounde",
+   lineup:["mbappe","dembele","griezmann","tchouameni","kounde","lloris"],
+   prediction:pred("FRA",1,0,"UNDER","FRA","FRA",false,"UNDER","UNDER"),
+   arrival:"on_time", wsn:wsnAll("FRA","FORWARD")},
+  {teamName:"Late Arrivals FC", captainPos:"FORWARD", captainId:"mbappe",
+   lineup:["mbappe","giroud","griezmann","rabiot","varane","lloris"],
+   prediction:pred("FRA",2,1,"OVER","FRA","FRA",true,"OVER","OVER"),
+   arrival:"late",
+   wsn:[null,null,{team:"FRA",group:"FORWARD"},
+        {team:"FRA",group:"FORWARD"},{team:"ARG",group:"FORWARD"},null]},
+];
+
+/* ---------------------------------------------------------------------------
+   6. APP STATE + RENDER
+   --------------------------------------------------------------------------- */
+const S = {
+  view:"PATRON", phase:"INTRO", step:0,
+  patron:{ teamName:"", captainPos:null, captainId:null,
+           lineup:{FORWARD:[],MIDFIELDER:[],DEFENDER:[],KEEPER:[]},
+           prediction:{winner:null,ph:1,pa:1,ou25:null,possTeam:null,
+                        cornersTeam:null,redCard:null,yellowOU:null,sotOU:null,ht:null},
+           arrival:"on_time", wsn:[null,null,null,null,null,null],
+           _htSwappedOut:[], gkChoiceNeeded:false },
+  clock:{ minute:0, running:false, speed:1, msPerMin:1000 },
+  tIndex:0, ticker:[], activeWindow:null,
+  windowSecs:CFG.WINDOW_DURATION_SECONDS, _timer:null, _winTimer:null,
+};
+const SPEEDS=[1,2,5,8];
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return (""+s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+function fmt(n){ return (Math.round(n*10)/10).toFixed(1).replace(/\.0$/,""); }
+
+function setView(v){
+  S.view=v;
+  $("vPatron").classList.toggle("active",v==="PATRON");
+  $("vTV").classList.toggle("active",v==="TV");
+  render();
+  scrollStageTop();   // R5 BUG 3: leaderboard now lands at the top, not on the summary
+}
+
+function setupSpeedButtons(){
+  $("spd").innerHTML = '<span class="tag" style="margin-right:4px">Speed</span>'+
+    SPEEDS.map(s=>`<button onclick="setSpeed(${s})" class="${s===S.clock.speed?'on':''}" data-s="${s}">${s}×</button>`).join("");
+}
+function setSpeed(s){ S.clock.speed=s; setupSpeedButtons();
+  if(S.clock.running){ stopClock(); startClock(); } }
+
+/* ---------- Patron build flow ---------- */
+const CAP_BUILD = {
+  FORWARD:"Captain Forward + 1 more Forward + 2 Midfielders + 1 Defender + Keeper",
+  MIDFIELDER:"Captain Midfielder + 2 Forwards + 1 more Midfielder + 1 Defender + Keeper",
+  DEFENDER:"Captain Defender + 2 Forwards + 2 Midfielders + Keeper",
+  KEEPER:"Captain Keeper + 2 Forwards + 2 Midfielders + 1 Defender",
+};
+
+function playersByPos(pos){
+  const order={GOLD:0,SILVER:1,BRONZE:2};
+  return Object.values(P).filter(p=>p.pos===pos).sort((a,b)=>order[a.tier]-order[b.tier]);
+}
+function tierBadge(t){ return `<span class="tierbadge ${t}">${t}</span>`; }
+function teamTag(t){ return `<span class="teamtag ${t}">${t}</span>`; }
+
+function patronView(){
+  const pt=S.patron;
+  if(S.phase==="INTRO") return introScreen();
+  if(S.phase==="RULES") return rulesScreen();
+  if(S.phase==="LIVE"||S.phase==="READY"){
+    if(S.phase==="READY")
+      return card(`<h2>Lineup locked — ${esc(pt.teamName||"Your Team")}</h2>
+        <p class="lede">Hand the device to the patron. The presenter starts the match with <b>▶ Play</b>.</p>
+        ${lineupSummary()}`);
+    return card(`<h2>Match in progress</h2>
+      <p class="lede">Watch for your decision windows. Switch to <b>Leaderboard</b> to show the room.</p>
+      ${lineupSummary()}
+      <div class="note">Minute ${S.clock.minute}' · ${esc(scoreStr())}</div>`);
+  }
+  if(S.phase==="FT") return resultsScreen();
+
+  // BUILD steps: 0 welcome,1 captain (player-first),2 lineup,3 prediction,4 keeper,5 confirm
+  const steps=["Welcome","Captain","Build Lineup","Prediction","Keeper","Confirm"];
+  let body="";
+  if(S.step===0){
+    body=`<h2>Build your team</h2>
+      <p class="lede">Don't Just Watch. <b>Manage.</b> You're the manager in the dugout.
+      Pick a Captain, build a lineup, predict the match — then ride the 2026 World Cup as it unfolds.</p>
+      <label class="note" for="tn">Your team name
+        <span style="color:var(--gold)">— required, shown on the TV leaderboard</span></label>
+      <div style="margin-top:6px"><input id="tn" value="${esc(pt.teamName)}"
+        placeholder="e.g. The Corner Booth" autofocus
+        oninput="clearTnHint()"
+        style="width:100%;padding:13px;border-radius:9px;border:1px solid var(--line);
+        background:var(--panel2);color:var(--ink);font-size:16px;min-height:52px"></div>
+      <div class="note" id="tnHint">Type a team name, then press <b>Continue ›</b>.</div>`;
+  } else if(S.step===1){
+    body=captainStep();
+  } else if(S.step===2){
+    body=buildLineupStep();
+  } else if(S.step===3){
+    body=predictionStep();
+  } else if(S.step===4){
+    body=keeperStep();
+  } else if(S.step===5){
+    body=`<h2>Confirm your team</h2><p class="lede">Last look before kickoff.</p>${lineupSummary()}`;
+  }
+
+  const canNext=stepValid();
+  const nav=`<div class="btnrow">
+    <button class="btn" ${canNext?"":"disabled"} onclick="nextStep()">
+      ${S.step===5?"Lock it in ✓":"Continue ›"}</button>
+    ${S.step>0?`<button class="btn ghost" onclick="prevStep()">‹ Back</button>`:""}</div>`;
+
+  return card(`<div class="note" style="margin-bottom:10px">
+      Step ${S.step+1} / 6 — ${steps[S.step]}</div>${body}${nav}`);
+}
+
+function card(html){ return `<div class="card">${html}</div>`; }
+
+/* Welcome / explainer — the ten-second hook a bar patron reads before the
+   build wizard. Three sentences only; no rules, no scoring. The build flow
+   itself is unchanged (this is a pre-wizard splash, not a new wizard step). */
+function introScreen(){
+  return card(`<div class="wt">Welcome</div>
+    <h2 style="margin:6px 0 4px">Beat the Crowd
+      <span style="color:var(--dim);font-weight:400">· World Cup Edition</span></h2>
+    <p class="lede" style="margin-bottom:16px">Don't Just Watch. <b>Manage.</b></p>
+    <div class="card" style="background:var(--panel2);display:flex;
+      flex-direction:column;gap:13px;font-size:15.5px">
+      <div><b style="color:var(--gold)">You're the manager.</b> Pick your captain,
+        build your lineup, predict the match — score points as it unfolds.</div>
+      <div><b style="color:var(--gold)">Free to play</b>, on your phone, right now.</div>
+      <div><b style="color:var(--gold)">Play for prizes &amp; bragging rights</b> —
+        top of the leaderboard wins.</div>
+    </div>
+    <div class="btnrow"><button class="btn" onclick="startRules()">Let's Play ›</button></div>`);
+}
+function startBuild(){
+  S.phase="BUILD"; S.step=0; render(); scrollStageTop(); updatePresenterStatus();
+}
+
+/* =========================================================================
+   R4 RULES PAGE (final wording per owner) — Variant B layout (single page),
+   used both as the in-flow screen between welcome and team-name (rulesScreen)
+   and as the body of the persistent help modal (openHelp). Copy is locked.
+   ========================================================================= */
+function rulesBodyHTML(){
+  return `<div class="rules">
+    <h3>How it works</h3>
+    <ul>
+      <li>Pick a <b>Captain</b>, build a 6-player lineup.</li>
+      <li>Captain earns <b>1.5× fantasy points</b> all match.</li>
+      <li>Predict <b>winner</b> (or draw) and <b>final score</b>.</li>
+      <li>Score points live as the match unfolds.</li>
+    </ul>
+    <h3>Scoring</h3>
+    <ul>
+      <li><b>PP</b> — winner + score points for predictions.</li>
+      <li><b>FP</b> — fantasy points based on your players' performance.</li>
+      <li><b>WSN</b> — predict the next-goal team + position.</li>
+      <li><b>Total</b> = PP + FP + WSN. Highest total score wins.</li>
+    </ul>
+    <h3>Decision windows</h3>
+    <ul>
+      <li><b style="color:var(--gold)">Who Scores Next</b> — pick fast after each goal. Also make a pre-game pick for the first goal.</li>
+      <li><b style="color:var(--gold)">Switcheroo</b> — lineup changes allowed at halftime.</li>
+      <li><b style="color:var(--gold)">YouTurn</b> — change your prediction at halftime. Switch forfeits score prediction points.</li>
+      <li><b style="color:var(--gold)">Manager's Call</b> — if a player in your lineup is subbed off, his replacement will be added to your team.</li>
+    </ul>
+    <div class="keynote">Keep your phone close — scoring windows open without warning.</div>
+  </div>`;
+}
+function rulesScreen(){
+  return card(`${rulesBodyHTML()}
+    <div class="btnrow">
+      <button class="btn" onclick="startBuild()">Got it — Let's Play ›</button></div>`);
+}
+function startRules(){
+  S.phase="RULES"; render(); scrollStageTop(); updatePresenterStatus();
+}
+
+/* R8.1 Fix A — body-scroll-lock. When any overlay (decision window or help
+   modal) is open, set body to position:fixed with the current scrollY saved
+   so iOS Safari can't page-bounce. Restored on close. Nested overlays are
+   handled by re-checking actual overlay state each time. */
+let _savedScrollY = 0;
+function setBodyScrollLock(){
+  const helpRoot = document.getElementById('helpRoot');
+  const helpOpen = !!(helpRoot && helpRoot.innerHTML && helpRoot.innerHTML.length > 0);
+  const anyOverlay = !!S.activeWindow || helpOpen;
+  const isLocked = document.body.classList.contains('overlay-open');
+  if(anyOverlay && !isLocked){
+    _savedScrollY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.top = (-_savedScrollY) + 'px';
+    document.body.classList.add('overlay-open');
+  } else if(!anyOverlay && isLocked){
+    document.body.classList.remove('overlay-open');
+    document.body.style.top = '';
+    window.scrollTo(0, _savedScrollY);
+  }
+}
+
+/* R4 Item 3 — persistent help modal. The game clock stays frozen whenever a pick
+   board is underneath (R12 freeze), but opening help does NOT pause the pick
+   board's own ~20s countdown (per brief: "patron uses it at their own timing
+   risk"). If the patron lingers in help, that countdown can expire and auto-pass
+   the pick. helpRoot is z=100, above any decision-window scrim at z=50. */
+function openHelp(){
+  $("helpRoot").innerHTML = `<div class="helpscrim"
+    onclick="if(event.target===this)closeHelp()">
+    <div class="window">
+      <div class="window-scroll">
+        <div class="wt">Rules</div>
+        ${rulesBodyHTML()}
+      </div>
+      <div class="window-footer">
+        <div class="btnrow"><button class="btn" onclick="closeHelp()">Got it</button></div>
+      </div>
+    </div></div>`;
+  setBodyScrollLock();
+}
+function closeHelp(){ $("helpRoot").innerHTML = ""; setBodyScrollLock(); }
+
+/* Player-first Captain selection: one grid, every player, tap to captain.
+   The chosen player's position drives the rest of the lineup (V9b structure
+   unchanged — only the UI moved from position-first to player-first). */
+function captainStep(){
+  const pt=S.patron;
+  const tierOrder={GOLD:0,SILVER:1,BRONZE:2};
+  const posOrder={FORWARD:0,MIDFIELDER:1,DEFENDER:2,KEEPER:3};
+  const all=Object.values(P).sort((a,b)=>
+    posOrder[a.pos]-posOrder[b.pos] || tierOrder[a.tier]-tierOrder[b.tier]);
+  const cards=all.map(p=>{
+    const sel=pt.captainId===p.id;
+    return `<div class="pick cap ${sel?'sel':''}" onclick="pickCaptain('${p.id}')">
+      <div class="nm">${esc(p.name)} ${teamTag(p.team)}</div>
+      <div class="meta cap-pos">${p.pos[0]+p.pos.slice(1).toLowerCase()}</div>
+      <div class="cap-row">${tierBadge(p.tier)}
+        <button class="capbtn ${sel?'on':''}"
+          onclick="event.stopPropagation();pickCaptain('${p.id}')">
+          ${sel?'✓ Captain':'Captain'}</button></div></div>`;
+  }).join("");
+  const chosen = pt.captainId
+    ? `<div class="bonus-intro" style="margin-top:14px">Captain:
+       <b>${esc(P[pt.captainId].name)}</b> ·
+       ${pt.captainPos[0]+pt.captainPos.slice(1).toLowerCase()} earns 1.5× all match.
+       Lineup shape: ${CAP_BUILD[pt.captainPos]}.</div>`
+    : "";
+  return `<h2>1 · Pick your Captain</h2>
+    <p class="lede">Tap any player to make them Captain. They earn
+      <b>1.5× Fantasy Points for the whole match</b>, and their position sets
+      the shape of the rest of your lineup. Gold / Silver / Bronze reflect form —
+      you only ever see the tier.</p>
+    <div class="grid capgrid">${cards}</div>${chosen}`;
+}
+
+function neededCounts(){
+  // All paths total 2 FWD, 2 MID, 1 DEF, 1 GK. Captain fills one slot.
+  const need={FORWARD:2,MIDFIELDER:2,DEFENDER:1,KEEPER:1};
+  return need;
+}
+function remainingToPick(pos){
+  const need=neededCounts()[pos];
+  const cap = (S.patron.captainPos===pos)?1:0;
+  return need - cap;
+}
+function buildLineupStep(){
+  const pt=S.patron; let h=`<h2>2 · Build the rest of your lineup</h2>
+    <p class="lede">${CAP_BUILD[pt.captainPos]}. The Keeper is handled next.</p>`;
+  ["FORWARD","MIDFIELDER","DEFENDER"].forEach(pos=>{
+    const need=remainingToPick(pos); if(need<=0) return;
+    const chosen=pt.lineup[pos];
+    h+=`<h3>${pos[0]+pos.slice(1).toLowerCase()} — pick ${need}
+      (${chosen.length}/${need})</h3><div class="grid g3">`;
+    playersByPos(pos).forEach(p=>{
+      if(p.id===pt.captainId) return;
+      const sel=chosen.includes(p.id);
+      h+=`<div class="pick ${sel?'sel':''}" onclick="toggleLineup('${pos}','${p.id}')">
+        <div class="nm">${esc(p.name)} ${teamTag(p.team)}</div>
+        <div class="meta" style="margin-top:6px">${tierBadge(p.tier)}</div></div>`;
+    });
+    h+=`</div>`;
+  });
+  return h;
+}
+
+function predictionStep(){
+  const pr=S.patron.prediction;
+  const wd=(w,l)=>`<div class="pick ${pr.winner===w?'sel':''}" style="text-align:center"
+    onclick="setPred('winner','${w}')"><div class="nm">${l}</div></div>`;
+  const chip=(field,val,label)=>{
+    const on = field==="redCard" ? pr.redCard===(val==="true") : pr[field]===val;
+    return `<span class="chip ${on?'sel':''}"
+      onclick="setPred('${field}','${val}')">${label}</span>`;
+  };
+  const bonus=(q,pts,field,opts,note)=>`<div class="bonus">
+    <div class="bonus-head"><span class="bonus-q">${q}</span>
+      <span class="bonus-pts">${pts}</span></div>
+    <div class="pillrow">${opts.map(o=>chip(field,o[0],o[1])).join("")}</div>
+    ${note?`<div class="note">${note}</div>`:""}</div>`;
+  return `<h2>3 · Predict the match</h2>
+    <p class="lede">Score prediction comes last — you're warmed up and invested now.</p>
+    <h3>Winner / Draw</h3>
+    <div class="grid g3" style="grid-template-columns:repeat(3,1fr)">
+      ${wd("ARG","Argentina")}${wd("DRAW","Draw")}${wd("FRA","France")}</div>
+    <h3>Exact score</h3>
+    <div style="display:flex;gap:30px;align-items:center;flex-wrap:wrap">
+      <div><div class="note">Argentina</div>${stepperHTML("ph")}</div>
+      <div style="font-size:24px;color:var(--dim)">–</div>
+      <div><div class="note">France</div>${stepperHTML("pa")}</div></div>
+    <h3>Bonus predictions</h3>
+    <div class="bonus-intro">These tiebreaker picks separate you from patrons with the same lineup.</div>
+    ${bonus("Total goals — Over/Under 2.5","+8 if right · −3 if wrong","ou25",
+       [["OVER","Over 2.5"],["UNDER","Under 2.5"]],
+       "2.5 means no tie — over = 3 or more goals, under = 2 or fewer.")}
+    ${bonus("More possession","+6 if right","possTeam",
+       [["ARG","Argentina"],["FRA","France"]])}
+    ${bonus("More corners","+5 if right","cornersTeam",
+       [["ARG","Argentina"],["FRA","France"]])}
+    ${bonus("Any red card in the match?","+8 if right · 0 if wrong","redCard",
+       [["true","Yes — red card"],["false","No red card"]])}
+    ${bonus("Yellow cards — Over/Under 3.5","+5 if right · −2 if wrong","yellowOU",
+       [["OVER","Over 3.5"],["UNDER","Under 3.5"]])}
+    ${bonus("Shots on target — Over/Under 8.5","+5 if right · −2 if wrong","sotOU",
+       [["OVER","Over 8.5"],["UNDER","Under 8.5"]])}`;
+}
+function stepperHTML(f){
+  const v=S.patron.prediction[f];
+  return `<div class="stepper"><button onclick="bump('${f}',-1)">−</button>
+    <span class="val">${v}</span><button onclick="bump('${f}',1)">+</button></div>`;
+}
+
+function keeperStep(){
+  const pt=S.patron, pr=pt.prediction;
+  if(pt.captainPos==="KEEPER"){
+    pt.lineup.KEEPER=[pt.captainId];   // Captain fills the Keeper slot
+    return `<h2>4 · Keeper</h2><p class="lede">You captained the Keeper —
+      <b>${esc(P[pt.captainId].name)}</b> ${teamTag(P[pt.captainId].team)} earns 1.5×.
+      No auto-assignment needed.</p>`;
+  }
+  if(pr.winner==="DRAW"){
+    const gks=Object.values(P).filter(p=>p.pos==="KEEPER");
+    return `<h2>4 · Choose your Keeper</h2>
+      <p class="lede">You predicted a <b>Draw</b> — the most sophisticated prediction earns
+      one extra decision: pick either starting Keeper.</p><div class="grid g2">`+
+      gks.map(g=>`<div class="pick ${pt.lineup.KEEPER[0]===g.id?'sel':''}"
+        onclick="pickKeeper('${g.id}')"><div class="nm">${esc(g.name)} ${teamTag(g.team)}</div>
+        <div class="meta">Starting GK</div></div>`).join("")+`</div>`;
+  }
+  const team=pr.winner==="ARG"?"ARG":"FRA";
+  const gk=Object.values(P).find(p=>p.pos==="KEEPER"&&p.team===team);
+  pt.lineup.KEEPER=[gk.id];
+  return `<h2>4 · Keeper auto-assigned</h2>
+    <p class="lede">You predicted <b>${team==="ARG"?"Argentina":"France"}</b> to win, so the Keeper is
+    auto-assigned to that side's starting GK — no decision required.</p>
+    <div class="pick sel" style="max-width:320px"><div class="nm">${esc(gk.name)} ${teamTag(gk.team)}</div>
+    <div class="meta">Auto-assigned starting Keeper</div></div>`;
+}
+
+function lineupSummary(){
+  const pt=S.patron;
+  const flat=[...pt.lineup.FORWARD,...pt.lineup.MIDFIELDER,...pt.lineup.DEFENDER,...pt.lineup.KEEPER];
+  const pr=pt.prediction;
+  const row=pid=>{const p=P[pid];const cap=pid===pt.captainId;
+    return `<div class="kv"><span>${esc(p.name)} ${teamTag(p.team)}
+      <span class="muted">· ${p.pos[0]+p.pos.slice(1).toLowerCase()}</span>
+      ${cap?'<span class="tierbadge GOLD">CAPTAIN ×1.5</span>':''}</span>
+      <b>${tierBadge(p.tier)}</b></div>`;};
+  return `<div class="card" style="background:var(--panel2);margin-top:12px">
+    ${flat.map(row).join("")}
+    <div class="kv" style="border:0;margin-top:8px"><span class="muted">Prediction</span>
+      <b>${pr.winner||"—"} · ${pr.ph}–${pr.pa}</b></div></div>`;
+}
+
+/* ---------- Build interactions ---------- */
+function pickCaptain(id){
+  const pt=S.patron, pos=P[id].pos;
+  if(pt.captainPos!==pos){            // position changed → reset dependent lineup
+    pt.captainPos=pos;
+    pt.lineup={FORWARD:[],MIDFIELDER:[],DEFENDER:[],KEEPER:[]};
+  }
+  pt.captainId=id; render();
+}
+function toggleLineup(pos,id){
+  const arr=S.patron.lineup[pos]; const i=arr.indexOf(id);
+  if(i>=0){ arr.splice(i,1); }
+  else { if(arr.length>=remainingToPick(pos)) arr.shift(); arr.push(id); }
+  render();
+}
+function setPred(f,v){
+  if(f==="redCard") v=(v==="true");
+  S.patron.prediction[f]=v; render();
+}
+function bump(f,d){ const pr=S.patron.prediction;
+  pr[f]=Math.max(0,Math.min(7,pr[f]+d)); render(); }
+function pickKeeper(id){ S.patron.lineup.KEEPER=[id]; render(); }
+
+function stepValid(){
+  const pt=S.patron, pr=pt.prediction;
+  switch(S.step){
+    case 0: return true;  // never a dead button — empty name is caught in nextStep with a visible prompt
+    case 1: return !!pt.captainId;
+    case 2: return ["FORWARD","MIDFIELDER","DEFENDER"].every(p=>
+                   pt.lineup[p].length===remainingToPick(p));
+    case 3: return pr.winner&&pr.ou25&&pr.possTeam&&pr.cornersTeam&&
+                   pr.redCard!=null&&pr.yellowOU&&pr.sotOU;
+    case 4: return pt.lineup.KEEPER.length===1;
+    case 5: return true;
+  }
+  return false;
+}
+function clearTnHint(){
+  const h=$("tnHint");
+  if(h){ h.textContent="Type a team name, then press Continue ›."; h.style.color="var(--dim)"; }
+}
+// Reset the scroll container on screen ENTER so every step opens at its top
+// (Forwards first on the team page; Winner/Draw first on the prediction page).
+// Called on step navigation only — never on in-screen re-renders, so picking
+// a player mid-grid does not yank the view to the top.
+function scrollStageTop(){
+  const m=document.querySelector('main');
+  if(m) m.scrollTop=0;
+  try{ window.scrollTo(0,0); }catch(e){}
+}
+function nextStep(){
+  if(S.step===0){
+    const v = $("tn") ? $("tn").value.trim() : S.patron.teamName;
+    if(!v){                                   // empty → don't dead-end; tell the user why
+      const h=$("tnHint");
+      if(h){ h.innerHTML="↑ Enter a team name to continue."; h.style.color="var(--red)"; }
+      if($("tn")) $("tn").focus();
+      return;
+    }
+    S.patron.teamName=v;
+  }
+  if(S.step===1){ // captain chosen — keep it out of the rest-of-lineup arrays
+    const pos=S.patron.captainPos;
+    S.patron.lineup[pos]=S.patron.lineup[pos].filter(x=>x!==S.patron.captainId);
+  }
+  if(S.step===5){ finalizeLineup(); return; }
+  if(!stepValid()) return;
+  S.step++; render(); scrollStageTop();
+}
+function prevStep(){ if(S.step>0){ S.step--; render(); scrollStageTop(); } }
+
+function finalizeLineup(){
+  const pt=S.patron;
+  // Flatten lineup; ensure captain present in its slot.
+  if(pt.captainPos!=="KEEPER" && !pt.lineup[pt.captainPos].includes(pt.captainId))
+    pt.lineup[pt.captainPos]=[pt.captainId,...pt.lineup[pt.captainPos]];
+  if(pt.captainPos==="KEEPER") pt.lineup.KEEPER=[pt.captainId];
+  pt.flatLineup=[...pt.lineup.FORWARD,...pt.lineup.MIDFIELDER,
+                 ...pt.lineup.DEFENDER,...pt.lineup.KEEPER];
+  S.phase="READY";
+  pushTicker("—","Lineup locked: "+(pt.teamName||"Your Team")+
+    " · Captain "+P[pt.captainId].name);
+  render(); scrollStageTop(); updatePresenterStatus();
+}
+
+/* Patron-as-entity adapter for the scoring engine */
+function patronEntity(){
+  const pt=S.patron;
+  return { teamName:pt.teamName||"Your Team",
+    lineup:pt.flatLineup||[], captainId:pt.captainId,
+    prediction:pt.prediction, arrival:pt.arrival,
+    wsn:pt.wsn, _htSwappedOut:pt._htSwappedOut||[], isMe:true,
+    captainPos:pt.captainPos };
+}
+
+/* ---------------------------------------------------------------------------
+   7. TV LEADERBOARD VIEW
+   --------------------------------------------------------------------------- */
+function scoreStr(){
+  let h=0,a=0; GOALS.forEach(g=>{ if(g.min<=S.clock.minute){
+    if(g.team==="ARG")h++; else a++; }});
+  return `Argentina ${h} – ${a} France`;
+}
+function liveScore(){ let h=0,a=0; GOALS.forEach(g=>{ if(g.min<=S.clock.minute){
+  if(g.team==="ARG")h++; else a++; }}); return [h,a]; }
+
+function tvView(){
+  const [h,a]=liveScore();
+  const phaseLbl = S.phase==="FT"?"FULL-TIME":
+    (S.phase==="LIVE"? (S.clock.minute>=45&&S.clock.minute<46?"HALF-TIME":S.clock.minute+"'")
+     : "PRE-MATCH");
+  const board=leaderboardRows();
+  return `<div class="scoreboard">
+      <div class="sbteams">
+        <div class="t" style="color:var(--arg)">ARG</div>
+        <div class="sc">${h} : ${a}</div>
+        <div class="t" style="color:var(--fra)">FRA</div></div>
+      <div class="sbclock">${phaseLbl}</div>
+      <div class="ticker" id="tk">${S.ticker.length?S.ticker.slice().reverse().map(t=>
+        `<div><span class="m">${esc(t.m)}</span>${esc(t.x)}</div>`).join("")
+        :'<div class="muted">Match has not started. Presenter: press ▶ Play.</div>'}</div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2 style="margin-bottom:2px">Leaderboard</h2>
+      <div class="note" style="margin-bottom:8px">Captain pick shown under each team
+        (visible to the room, per V9b).</div>
+      <table class="lb"><thead><tr><th class="rk">#</th><th>Team</th>
+        <th class="num">Prediction<br>Points</th>
+        <th class="num">Fantasy<br>Points</th>
+        <th class="num">Who Scores<br>Next? Points</th>
+        <th class="num">Total<br>Points</th></tr></thead><tbody>
+      ${board}</tbody></table></div>
+    ${S.phase==="FT"?`<div class="card" style="margin-top:16px">${milestoneSummary()}</div>`:""}`;
+}
+
+function allEntities(){
+  const list=SYN.map(s=>Object.assign({},s,{captainId:s.captainId}));
+  if(S.patron.flatLineup) list.push(patronEntity());
+  return list;
+}
+function leaderboardRows(){
+  const upto=S.clock.minute;
+  const rows=allEntities().map(e=>{
+    const t=entityTotals(e,upto);
+    return {e, ...t};
+  });
+  rows.sort((x,y)=> y.total-x.total || y.pp-x.pp || y.fp-x.fp || y.wsn-x.wsn);
+  return rows.map((r,i)=>{
+    const cap=P[r.e.captainId];
+    return `<tr class="${r.e.isMe?'me':''}">
+      <td class="rk">${i+1}</td>
+      <td><b>${esc(r.e.teamName)}</b>${r.e.isMe?' <span class="tierbadge GOLD">YOU</span>':''}
+        <span class="capdot">©️ ${esc(cap.name)} · ${cap.pos[0]+cap.pos.slice(1).toLowerCase()}
+        ${r.e.arrival==="late"?"· late":""}</span></td>
+      <td class="num">${fmt(r.pp)}</td><td class="num">${fmt(r.fp)}</td>
+      <td class="num">${fmt(r.wsn)}</td>
+      <td class="num"><b style="color:var(--gold)">${fmt(r.total)}</b></td></tr>`;
+  }).join("");
+}
+
+/* ---------------------------------------------------------------------------
+   8. PRESENTER CLOCK + SCRIPTED TIMELINE RUNNER
+   --------------------------------------------------------------------------- */
+function pushTicker(m,x){ S.ticker.push({m,x}); }
+
+function presenterPlay(){
+  if(S.phase==="INTRO"||S.phase==="RULES"||S.phase==="BUILD"){ alert("Finish building the lineup first."); return; }
+  if(S.phase==="FT"){ return; }
+  if(S.phase==="READY"){
+    S.phase="LIVE"; S.tIndex=0; S.clock.minute=0;
+    pushTicker("0'","Kickoff — Argentina vs France");
+  }
+  S.clock.running=true;
+  // P1: keep both buttons visible/enabled during LIVE so the presenter can always
+  // pause for narration. pPause is a no-op when not running.
+  $("pPlay").disabled=false; $("pPause").disabled=false;
+  processTimeline();        // handle any event at current minute (e.g. pre-kickoff)
+  startClock();
+  render(); updatePresenterStatus();
+}
+function presenterPause(){
+  if(!S.clock.running) return;      // no-op when already paused
+  S.clock.running=false; stopClock();
+  $("pPlay").disabled=false; $("pPause").disabled=false;
+  updatePresenterStatus();
+}
+// Fire the next scripted event immediately, regardless of the timer position.
+// Lets the presenter narrate at their own pace between events.
+function presenterNextEvent(){
+  if(S.phase==="INTRO"||S.phase==="RULES"||S.phase==="BUILD"){ alert("Finish building the lineup first."); return; }
+  if(S.phase==="FT") return;
+  if(S.phase==="READY"){               // first press kicks off the match
+    S.phase="LIVE"; S.tIndex=0; S.clock.minute=0;
+    pushTicker("0'","Kickoff — Argentina vs France");
+    processTimeline();                  // ▶ Play stays available to switch to auto
+    render(); updatePresenterStatus(); return;
+  }
+  if(S.activeWindow){ resolveWindowDefault(); return; }   // resolve, then advance
+  if(S.tIndex<TIMELINE.length){
+    const ev=TIMELINE[S.tIndex];
+    if(ev.min>S.clock.minute) S.clock.minute=ev.min;
+    processTimeline();
+  }
+  render(); updatePresenterStatus();
+}
+function setWindowSecs(v){
+  const n=Math.max(10,Math.min(600,parseInt(v,10)||S.windowSecs));
+  S.windowSecs=n;
+  if($("winSecs")) $("winSecs").value=n;
+}
+// Collapse/expand the presenter panel. Collapsed maximises the patron view;
+// play/pause/reset stay one-tap in the always-visible strip.
+function togglePresenter(){
+  const f=$("presenterBar"); if(!f) return;
+  const open=f.classList.toggle("open");
+  const t=$("pToggle");
+  if(t){ t.textContent= open ? "⚙ Controls ▴" : "⚙ Controls ▾";
+         t.setAttribute("aria-expanded", open?"true":"false"); }
+}
+function startClock(){
+  stopClock();
+  S._timer=setInterval(()=>{
+    if(S.activeWindow) return;            // R12: game clock FULLY FROZEN while any
+                                          // pick board / interstitial is up — the
+                                          // minute does not advance at all.
+    S.clock.minute++;
+    if(S.clock.minute>90) S.clock.minute=90;
+    processTimeline();
+    if(S.view==="TV") render(); else updateLiveSnippet();
+    updatePresenterStatus();
+    if(S.phase==="FT"){ stopClock(); }
+  }, S.clock.msPerMin/S.clock.speed);
+}
+function stopClock(){ if(S._timer){ clearInterval(S._timer); S._timer=null; } }
+
+function updateLiveSnippet(){
+  // light refresh of patron "match in progress" line without full rebuild
+  if(S.phase==="LIVE"&&S.view==="PATRON"&&!S.activeWindow) render();
+}
+
+function processTimeline(){
+  while(S.tIndex<TIMELINE.length){
+    const ev=TIMELINE[S.tIndex];
+    if(ev.min>S.clock.minute) break;
+    S.tIndex++;
+    handleEvent(ev);
+    if(S.activeWindow) break;             // pause processing until window closed
+  }
+}
+
+function handleEvent(ev){
+  switch(ev.type){
+    case "WHO_SCORES_FIRST":
+      openWindow({kind:"WSF"}); break;
+    case "KICKOFF": break;
+    case "GOAL":{
+      const g=GOALS[ev.gi];
+      const sc=P[g.scorer], as=g.assist?P[g.assist]:null;
+      pushTicker(g.min+"'", `⚽ GOAL ${g.team} — ${sc.name}`+
+        (g.penalty?" (pen)":"")+(as?` (assist ${as.name})`:"")+
+        `  ·  ${scoreStr()}`);
+      // Hard stop: GOAL! interstitial. Patron taps "Got it" → WSN window opens.
+      openWindow({kind:"GOAL", noTimer:true, gi:ev.gi});
+      break; }
+    case "WSN":
+      openWindow({kind:"WSN", idx:ev.afterGoal+1}); break;
+    case "SUB_FIRSTHALF":
+      // R9 FIX 1: Manager's Call removed. SUB_FIRSTHALF is ticker-only — the
+      // sub is communicated to the patron via the Half-Time Switch banner.
+      pushTicker("41'", ev.text);
+      break;
+    case "HALFTIME":
+      pushTicker("45'","Half-Time. Half-Time Switch window open — no timer; tap Continue when ready.");
+      // Hard stop: no timer; patron stays until Continue (P1 + P4).
+      openWindow({kind:"HT", noTimer:true}); break;
+    case "SECONDHALF":
+      pushTicker("46'","Second half underway."); break;
+    case "RED_CARD":
+      // R5 BUG 2: red card is now a hard stop (notification, no decision).
+      pushTicker(ev.min+"'", ev.text);
+      openWindow({kind:"REDCARD", noTimer:true, min:ev.min,
+        teamLabel:"France", teamTag:"FRA", playerName:"T. Hernández"});
+      break;
+    case "FULLTIME":
+      S.phase="FT"; S.clock.running=false; stopClock();
+      $("pPlay").disabled=true; $("pPause").disabled=true;
+      pushTicker("FT","Full-Time — "+scoreStr()+
+        ". Final scoring settled (PP + FP + WSN).");
+      // Hard stop: FULL TIME interstitial. "See results" advances to results screen.
+      openWindow({kind:"FT", noTimer:true});
+      render(); break;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   9. DECISION WINDOWS. Patron-only. Pick boards (WSF/WSN) run a ~20s countdown
+      (R12 · WINDOW_DURATION_SECONDS), scaled by presenter speed; the game clock
+      is frozen the whole time it is up. Hard-stop interstitials (GOAL/HT/RED/FT)
+      have no timer. Synthetic patrons resolve automatically via pre-set plans.
+   --------------------------------------------------------------------------- */
+function openWindow(w){
+  // Late arrivals don't get pre-cutoff windows; human patron is on-time here.
+  S.activeWindow=w;
+  setBodyScrollLock();
+  if(w.noTimer){
+    $("pSkip").disabled=true;
+    renderWindow();
+    clearInterval(S._winTimer); S._winTimer=null;
+    return;                                       // hard-stop: no countdown
+  }
+  const secs=S.windowSecs;
+  w.total=secs; w.left=secs;
+  $("pSkip").disabled=false;
+  renderWindow();
+  clearInterval(S._winTimer);
+  const tickMs=1000/Math.max(1,S.clock.speed);   // window also scales with speed
+  S._winTimer=setInterval(()=>{
+    // Pacing control only: the countdown advances solely while the demo is
+    // "playing". Presenter Pause / event-by-event stepping freezes it so the
+    // presenter can narrate the goal+substitution cluster. This does NOT change
+    // the configured window length (w.total / S.windowSecs / config) — paused
+    // seconds simply don't tick; Play resumes from where it left off.
+    if(!S.clock.running) return;
+    w.left--;
+    if(w.left<=0){ resolveWindowDefault(); }
+    else renderWindow();
+  }, tickMs);
+}
+function closeWindow(){
+  clearInterval(S._winTimer); S._winTimer=null;
+  S.activeWindow=null; $("overlayRoot").innerHTML="";
+  $("pSkip").disabled=true;
+  setBodyScrollLock();
+  if(S.clock.running){ /* clock interval will resume processing */ }
+  processTimeline();
+  render(); updatePresenterStatus();
+}
+function presenterSkipWindow(){ if(S.activeWindow) resolveWindowDefault(); }
+
+function resolveWindowDefault(){
+  const w=S.activeWindow; if(!w) return;
+  // No choice made → leave patron pick as-is (likely empty = 0 for that window)
+  if(w.kind==="WSF" || w.kind==="WSN"){
+    /* leave S.patron.wsn[idx] as whatever (null = 0) */
+  }
+  if(w.kind==="HT"){ /* no change */ }
+  // R5: MC window kind removed — Manager's Call is now notification-only.
+  closeWindow();
+}
+
+function renderWindow(){
+  const w=S.activeWindow; if(!w){ $("overlayRoot").innerHTML=""; return; }
+  let inner="";
+  if(w.kind==="WSF") inner=wsfBody();
+  else if(w.kind==="WSN") inner=wsnBody(w.idx);
+  else if(w.kind==="HT") inner=htBody();
+  else if(w.kind==="GOAL") inner=goalBody(w);
+  else if(w.kind==="REDCARD") inner=redCardBody(w);
+  else if(w.kind==="FT")   inner=ftBody();
+  // R9 FIX 2: each body returns its own .window-scroll + .window-footer
+  // structure for flex-column window layout. The Submit/Got-it button is
+  // structurally outside the scroll region.
+  $("overlayRoot").innerHTML=`<div class="scrim"><div class="window">${inner}</div></div>`;
+}
+// Shared countdown HTML — placed inside .window-footer by each body function
+// that has an active timer.
+function countdownHTML(){
+  const w = S.activeWindow;
+  if(!w || w.noTimer) return '';
+  const pct = Math.max(0, (w.left/w.total)*100);
+  return `<div class="countbar"><i style="width:${pct}%"></i></div>
+    <div class="countnum">${w.left}s</div>`;
+}
+
+/* Who Scores First? (pre-kickoff) — R7 BUG 2: defensive rewrite. All chips
+   use .pillrow consistently; selection state is computed defensively so a
+   team chip only highlights when no mutually-exclusive pick (noGoalH1 / nmg)
+   is active. touch-action:manipulation on .chip (CSS) suppresses iOS double-
+   tap zoom which was the suspected cause of mis-routed taps. */
+function wsfBody(){
+  const title="Who Scores First? · "+S.windowSecs+"s";
+  S.activeWindow.title=title;
+  const sel=S.patron.wsn[0]||{};
+  const teamSelected = !sel.noGoalH1 && !sel.nmg ? sel.team : null;
+  const groupSelected = !sel.noGoalH1 && !sel.nmg ? sel.group : null;
+  const teamChip = t => `<span class="chip ${teamSelected===t?'sel':''}"
+    onclick="setWSNpart(0,'team','${t}')">${t==='ARG'?'Argentina':'France'}</span>`;
+  const grpChip = g => `<span class="chip ${groupSelected===g?'sel':''}"
+    onclick="setWSNpart(0,'group','${g}')">${g}</span>`;
+  return `<div class="window-scroll">
+    <div class="wt">${title}</div>
+    <h2>Who scores first?</h2>
+    <div class="nowctx">Match's about to kick off — call who scores the first goal before the window closes.</div>
+    <p class="muted">Pick a team + position group, or call no goal in the first half.</p>
+    <div class="note">Team</div>
+    <div class="pillrow">${teamChip('ARG')}${teamChip('FRA')}</div>
+    <div class="note" style="margin-top:10px">Position group</div>
+    <div class="pillrow">${['FORWARD','MID','DEF','GK','OG'].map(grpChip).join('')}</div>
+    <div class="note" style="margin-top:10px">Or call no goal in the first half:</div>
+    <div class="pillrow">
+      <span class="chip ${sel.noGoalH1?'sel':''}" onclick="setWSN(0,{noGoalH1:true})">
+        🚫 NO GOAL — first half</span></div>
+    ${nmgSectionHTML(0,sel)}
+  </div>
+  <div class="window-footer">
+    <div class="btnrow"><button class="btn" onclick="submitWindow()">Submit</button></div>
+    ${countdownHTML()}
+  </div>`;
+}
+/* Who Scores Next? (after a goal) */
+function wsnBody(idx){
+  const title="Who Scores Next? · "+S.windowSecs+"s";
+  S.activeWindow.title=title;
+  const sel=S.patron.wsn[idx]||{};
+  return `<div class="window-scroll">
+    <div class="wt">${title}</div>
+    <h2>Who scores next?</h2>
+    <div class="nowctx">Another goal is coming — who scores next? Get your pick in before the window closes.</div>
+    <p class="muted">Fires on every phone after each goal. No penalty for a wrong pick.</p>
+    ${teamGroupPicker(idx,sel)}
+    ${nmgSectionHTML(idx,sel)}
+  </div>
+  <div class="window-footer">
+    <div class="btnrow"><button class="btn" onclick="submitWindow()">Submit</button></div>
+    ${countdownHTML()}
+  </div>`;
+}
+function teamGroupPicker(idx,sel){
+  const team=t=>`<span class="chip ${sel.team===t?'sel':''}"
+    onclick="setWSNpart(${idx},'team','${t}')">${t==="ARG"?"Argentina":"France"}</span>`;
+  const grp=g=>`<span class="chip ${sel.group===g?'sel':''}"
+    onclick="setWSNpart(${idx},'group','${g}')">${g}</span>`;
+  return `<div class="note">Team</div><div class="pillrow">${team("ARG")}${team("FRA")}</div>
+    <div class="note" style="margin-top:10px">Position group</div>
+    <div class="pillrow">${["FORWARD","MID","DEF","GK","OG"].map(grp).join("")}</div>`;
+}
+/* R4 NMG chip — mutually exclusive with team/group/noGoalH1. Shows live tier
+   and point values based on the current match minute (window-open minute). */
+function nmgSectionHTML(idx, sel){
+  const rem = 90 - S.clock.minute;
+  const tier = nmgTier(S.clock.minute);
+  const v = CFG.NMG[tier];
+  const isSel = !!(sel && sel.nmg);
+  return `<div class="note" style="margin-top:12px">Or call no more scoring before the period ends:</div>
+    <div class="pillrow">
+      <span class="chip ${isSel?'sel':''}" onclick="setWSNnmg(${idx})"
+        style="display:inline-flex;flex-direction:column;align-items:flex-start;
+          line-height:1.3;padding:10px 14px;min-height:auto;text-align:left">
+        <span style="font-weight:800;font-size:15px">🚫 No more scoring</span>
+        <span style="font-size:12px;color:var(--dim);margin-top:4px;font-weight:600">
+          ${rem} min left · ${nmgTierLabel(tier)} ·
+          <span style="color:var(--green)">+${v.correct}</span> /
+          <span style="color:var(--red)">${v.wrong}</span></span>
+      </span>
+    </div>`;
+}
+function setWSN(idx,obj){ S.patron.wsn[idx]=obj; renderWindow(); }
+function setWSNpart(idx,k,v){
+  // Selecting a team/group clears any existing nmg or noGoalH1 (mutually exclusive)
+  const existing = S.patron.wsn[idx];
+  const cur = (existing && !existing.noGoalH1 && !existing.nmg) ? existing : {};
+  cur[k]=v; S.patron.wsn[idx]=cur; renderWindow();
+}
+function setWSNnmg(idx){
+  // NMG selection clears team/group/noGoalH1. tier + confirmedAtMin recorded at Submit.
+  S.patron.wsn[idx] = {nmg:true};
+  renderWindow();
+}
+function submitWindow(){
+  const w=S.activeWindow;
+  if(w.kind==="WSF"||w.kind==="WSN"){
+    const idx = w.kind==="WSF" ? 0 : w.idx;
+    const pick = S.patron.wsn[idx];
+    if(pick && pick.nmg){
+      // Lock tier + time at confirm (per brief: time remaining = 90 − confirm minute).
+      pick.confirmedAtMin = S.clock.minute;
+      pick.tier = nmgTier(S.clock.minute);
+    }
+    pushTicker(S.clock.minute+"'","Your pick locked.");
+  }
+  closeWindow();
+}
+
+/* Hard-stop interstitials (no timer). Patron taps "Got it" to advance — the
+   match clock is paused (S.activeWindow blocks the tick interval) until then. */
+function goalBody(w){
+  const g=GOALS[w.gi];
+  const sc=P[g.scorer], as=g.assist?P[g.assist]:null;
+  const [h,a]=liveScore();
+  const title=g.min+"' · Goal";
+  S.activeWindow.title=title;
+  return `<div class="window-scroll">
+    <div class="wt">${title}</div>
+    <div class="interstitial">
+      <div class="hd">GOAL!</div>
+      <div class="team" style="color:${g.team==='ARG'?'var(--arg)':'var(--fra)'}">
+        ${g.team==='ARG'?'Argentina':'France'}</div>
+      <div class="sc"><span style="color:var(--arg)">${h}</span><span
+        style="color:var(--dim)"> – </span><span style="color:var(--fra)">${a}</span></div>
+      <div class="meta">Argentina vs France · ${g.min}'</div>
+      <div style="margin-top:14px; font-size:16px"><b>${esc(sc.name)}</b>${
+        g.penalty?' (pen)':''}${as?` · assist ${esc(as.name)}`:''}</div>
+    </div>
+  </div>
+  <div class="window-footer">
+    <div class="btnrow"><button class="btn" onclick="closeWindow()">Got it ›</button></div>
+  </div>`;
+}
+function redCardBody(w){
+  const [h,a]=liveScore();
+  const title=w.min+"' · Red Card";
+  S.activeWindow.title=title;
+  return `<div class="window-scroll">
+    <div class="wt">${title}</div>
+    <div class="interstitial">
+      <div class="hd" style="color:var(--red)">RED CARD</div>
+      <div class="team" style="color:${w.teamTag==='ARG'?'var(--arg)':'var(--fra)'}">
+        ${esc(w.teamLabel||'')} · ${esc(w.playerName||'')}</div>
+      <div class="sc"><span style="color:var(--arg)">${h}</span><span
+        style="color:var(--dim)"> – </span><span style="color:var(--fra)">${a}</span></div>
+      <div class="meta">${w.min}' · ${esc(w.teamLabel||'')} now playing with ten</div>
+    </div>
+  </div>
+  <div class="window-footer">
+    <div class="btnrow"><button class="btn" onclick="closeWindow()">Got it ›</button></div>
+  </div>`;
+}
+function ftBody(){
+  const [h,a]=liveScore();
+  const title="Full Time";
+  S.activeWindow.title=title;
+  return `<div class="window-scroll">
+    <div class="wt">${title}</div>
+    <div class="interstitial">
+      <div class="hd">FULL TIME</div>
+      <div class="sc"><span style="color:var(--arg)">${h}</span><span
+        style="color:var(--dim)"> – </span><span style="color:var(--fra)">${a}</span></div>
+      <div class="meta">Argentina vs France</div>
+    </div>
+  </div>
+  <div class="window-footer">
+    <div class="btnrow"><button class="btn" onclick="closeWindow()">See results ›</button></div>
+  </div>`;
+}
+/* Half-Time Switch — handoff §3.5 locked design: a single window that bundles
+   (a) forced replacement of any first-half sub in the lineup,
+   (b) optional Winner/Draw change (forfeits score-prediction cluster),
+   (c) optional swap of any non-captain lineup player.
+   Hard stop (noTimer): stays open until the patron taps Continue. */
+function htBody(){
+  const title="Half-Time Switch";
+  S.activeWindow.title=title;
+  const pt=S.patron;
+  const hasDembele=pt.flatLineup.includes("dembele");
+  return `<div class="window-scroll">
+    <div class="wt">${title}</div>
+    <h2>Half-Time Switch</h2>
+    <div class="nowctx">Half time — replace any lineup player, switch your winner pick, or both. Switching the winner pick forfeits your score-prediction points. No timer; tap Continue when you're done.</div>
+    <div class="banner">First-half substitution bundled here:
+      <b>France — Dembélé OFF, Kolo Muani ON</b>.${hasDembele?
+      " You have Dembélé — choose a replacement below.":
+      " (Not in your lineup — no action needed.)"}</div>
+
+    <div class="note" style="margin-top:6px">Winner / Draw
+      <span class="muted">(changing forfeits score-prediction points)</span></div>
+    <div class="pillrow">
+      ${["ARG","DRAW","FRA"].map(wn=>`<span class="chip ${
+        (pt.prediction.ht&&pt.prediction.ht.newWinner===wn)?'sel':
+        (!pt.prediction.ht&&pt.prediction.winner===wn?'sel':'')}"
+        onclick="htSetWinner('${wn}')">${wn}</span>`).join("")}</div>
+
+    ${hasDembele?`<div class="note" style="margin-top:14px">
+      <b style="color:var(--red)">Required:</b> replace Dembélé with a Forward</div>
+      <div class="pillrow">${playersByPos("FORWARD").filter(p=>
+        !pt.flatLineup.includes(p.id)||p.id==="dembele").filter(p=>p.id!=="dembele")
+        .map(p=>`<span class="chip" onclick="htReplaceDembele('${p.id}')">${esc(p.name)}</span>`)
+        .join("")||'<span class="muted">No bench Forward available</span>'}</div>`:""}
+
+    ${htSwapAnyHTML()}
+  </div>
+  <div class="window-footer">
+    <div class="btnrow">
+      <button class="btn" onclick="submitWindow()">Continue ›</button></div>
+  </div>`;
+}
+function htSwapAnyHTML(){
+  const pt=S.patron;
+  const lineupIds = pt.flatLineup || [];
+  const rows = lineupIds.filter(pid=>pid!==pt.captainId && pid!=="dembele").map(pid=>{
+    const pl=P[pid]; const isOpen = pt._htSwapOpen===pid;
+    const bench = Object.values(P).filter(p=>p.pos===pl.pos && !lineupIds.includes(p.id));
+    const benchHTML = isOpen ? `
+      <div class="pillrow" style="margin:6px 0 4px">
+        ${bench.length ? bench.map(b=>`<span class="chip"
+          onclick="htSwapPlayer('${pid}','${b.id}')">${esc(b.name)} ${tierBadge(b.tier)}</span>`).join("") :
+          '<span class="muted">No bench player available for this position.</span>'}
+        <span class="chip" onclick="htSwapClose()"
+          style="background:transparent;color:var(--dim);border-color:var(--line)">Cancel</span>
+      </div>` : '';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;
+        gap:10px;padding:8px 0;border-bottom:1px dashed #1d2a45">
+      <span style="font-size:14px">${esc(pl.name)} ${teamTag(pl.team)}
+        <span class="muted">· ${pl.pos[0]+pl.pos.slice(1).toLowerCase()}</span>
+        ${tierBadge(pl.tier)}</span>
+      <button onclick="htSwapOpen('${pid}')" style="background:${isOpen?'var(--gold)':'var(--panel2)'};
+        color:${isOpen?'#241c00':'var(--ink)'};border:1px solid var(--line);
+        min-height:38px;padding:6px 14px;font-size:13px;border-radius:8px;
+        font-weight:700;cursor:pointer">${isOpen?'Cancel':'Swap'}</button></div>
+      ${benchHTML}`;
+  }).join("");
+  return rows ? `
+    <div class="note" style="margin-top:18px">Optional swaps
+      <span class="muted">(any non-captain player)</span></div>
+    <div style="background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+      padding:4px 14px;margin-top:6px">${rows}</div>` : '';
+}
+function htSwapOpen(pid){
+  S.patron._htSwapOpen = (S.patron._htSwapOpen===pid) ? null : pid;
+  renderWindow();
+}
+function htSwapClose(){ S.patron._htSwapOpen = null; renderWindow(); }
+function htSwapPlayer(oldPid, newPid){
+  const pt=S.patron;
+  pt.flatLineup = pt.flatLineup.map(x => x===oldPid ? newPid : x);
+  const oldPos = P[oldPid].pos;
+  pt.lineup[oldPos] = pt.lineup[oldPos].map(x => x===oldPid ? newPid : x);
+  pt._htSwapOpen = null;
+  // R10 FIX 1: track HT-swapped-out player so post-game FP shows their first-
+  // half contribution (even if 0) with a "swapped off at HT" label.
+  pt._htSwappedOut = (pt._htSwappedOut||[]).concat([{pid:oldPid, leaveMin:45}]);
+  pushTicker("45'", `Half-Time Switch: ${P[oldPid].name} → ${P[newPid].name}`);
+  renderWindow();
+}
+function htSetWinner(wn){
+  const pt=S.patron;
+  if(wn===pt.prediction.winner){ pt.prediction.ht=null; }
+  else { pt.prediction.ht={used:true,newWinner:wn}; }
+  pushTicker("45'","Half-Time Switch: winner pick "+
+    (pt.prediction.ht?("changed to "+wn+" (score points forfeited)"):"unchanged"));
+  renderWindow();
+}
+function htReplaceDembele(pid){
+  const pt=S.patron;
+  ["FORWARD","MIDFIELDER","DEFENDER","KEEPER"].forEach(pos=>{
+    pt.lineup[pos]=pt.lineup[pos].map(x=>x==="dembele"?pid:x); });
+  pt.flatLineup=pt.flatLineup.map(x=>x==="dembele"?pid:x);
+  // R10 FIX 1: Dembélé left at 41' (scripted first-half sub). Track him with
+  // leaveMin=41 so the post-game FP shows his pre-41' contribution + label.
+  pt._htSwappedOut = (pt._htSwappedOut||[]).concat([{pid:"dembele", leaveMin:41}]);
+  pushTicker("45'","Half-Time Switch: Dembélé → "+P[pid].name);
+  renderWindow();
+}
+
+/* R9 FIX 1 — Manager's Call removed entirely. openManagersCall, the SUB
+   window kind, sub timing tracking (_subbedOff / _subEvents / _htSwapEntrants),
+   the mcBonusFP field, and the post-game sub-timing labels are all gone. The
+   demo's locked lineup at kickoff (with optional halftime Switcheroo) earns
+   FP for the full match. Rules page still describes MC as an automatic
+   product behavior. */
+
+/* End-of-game milestone summary — goals, substitutions and the red card,
+   in match order. Shown on the patron Full-Time screen and on the TV. */
+function milestoneSummary(){
+  const items=[];
+  GOALS.forEach(g=>{
+    const sc=P[g.scorer], as=g.assist?P[g.assist]:null;
+    items.push([g.min, `⚽ ${g.team} goal — ${sc.name}`+
+      (g.penalty?" (pen)":"")+(as?` (assist ${as.name})`:"")]);
+  });
+  TIMELINE.forEach(ev=>{
+    if(ev.type==="SUB_FIRSTHALF")  items.push([ev.min,"🔁 "+ev.text]);
+    if(ev.type==="RED_CARD")       items.push([ev.min,"🟥 "+ev.text]);
+  });
+  items.sort((a,b)=>a[0]-b[0]);
+  return `<h3>End-of-game summary</h3>
+    <div class="card" style="background:var(--panel2)">`+
+    items.map(it=>`<div class="kv"><span><span class="m">${it[0]}'</span>
+      ${esc(it[1])}</span></div>`).join("")+
+    `<div class="kv" style="border:0"><span class="muted">Final</span>
+      <b>${esc(scoreStr())}</b></div></div>`;
+}
+
+/* ---------------------------------------------------------------------------
+   10. RESULTS (Full-Time) — patron breakdown
+   --------------------------------------------------------------------------- */
+
+/* "vs. the field" horizontal bar (P6c). Color is rank-based:
+   rank 1–2 green, 3–5 gradient (green→yellow→orange), 6–8 red. Bar fill is
+   patron score ÷ field max. The "field" is patron + 7 synthetic opponents (8). */
+function scorebarHTML(patronScore, fieldScores){
+  const sorted = [...fieldScores].sort((a,b)=>b-a);
+  const max = sorted[0];
+  const rank = sorted.indexOf(patronScore) + 1;   // ties → best position
+  const N = fieldScores.length;
+  const pct = max>0 ? Math.max(2, Math.round((patronScore/max)*100)) : 2;
+  const colors = {1:'#2fbf71', 2:'#2fbf71', 3:'#8fc548',
+                  4:'#efbf42', 5:'#e7843d', 6:'#ef5e5e', 7:'#ef5e5e', 8:'#ef5e5e'};
+  const color = colors[rank] || 'var(--accent)';
+  return `<div class="scorebar">
+    <div class="scorebar-track"><div class="scorebar-fill"
+      style="width:${pct}%;background:${color}"></div></div>
+    <div class="scorebar-label"><span>vs. the field</span>
+      <span>Rank <b>${rank}</b> of ${N}</span></div></div>`;
+}
+
+/* Plain-English WSN recap (P6b): one row per window — what you picked,
+   what actually happened, ✓/✗. "No pick made" if the patron missed it. */
+function wsnRecapHTML(patron){
+  const picks = patron.wsn || [];
+  const tg = wsnTargets();
+  const teamName = t => t==='ARG' ? 'Argentina' : 'France';
+  const groupLabel = g => ({FORWARD:'Forward',MID:'Midfielder',
+    DEF:'Defender',GK:'Keeper',OG:'Own goal'}[g] || g);
+  const windowName = i => i===0 ? "Who Scores First?" :
+    `Who Scores Next? — after ${tg[i-1].min}'`;
+  const arr = patron.arrival;
+  const joinMin = arr==='late' ? CFG.LATE_ARRIVAL_CUTOFF_MINUTE : 0;
+  const rows = [];
+  for(let i=0;i<picks.length;i++){
+    const pick=picks[i], goal=tg[i];
+    if(arr==='late' && goal && goal.min<joinMin) continue;
+    let pickText, actualText, ok, pointsNote='';
+    // PICK TEXT
+    if(!pick){ pickText = '<span class="muted">No pick made</span>'; }
+    else if(pick.nmg){
+      const tier = pick.tier || 'late';
+      const v = CFG.NMG[tier];
+      pickText = `No more scoring (${nmgTierLabel(tier)} · +${v.correct} if correct)`;
+    }
+    else if(pick.noGoalH1){ pickText = 'No goal in first half'; }
+    else { pickText = `${pick.team?teamName(pick.team):'—'} · ${pick.group?groupLabel(pick.group):'—'}`; }
+    // ACTUAL TEXT + correctness
+    if(pick && pick.nmg){
+      const confirmedAt = pick.confirmedAtMin != null ? pick.confirmedAtMin :
+                          (i===0 ? 0 : tg[i-1].min);
+      const goalAfter = GOALS.find(g => g.min > confirmedAt);
+      const tier = pick.tier || 'late';
+      const v = CFG.NMG[tier];
+      if(!goalAfter){
+        actualText = 'No more goals scored';
+        ok = true;
+        pointsNote = ` <b style="color:var(--green)">+${v.correct} pts</b>`;
+      } else {
+        actualText = `${teamName(goalAfter.team)} scored at ${goalAfter.min}'`;
+        ok = false;
+        pointsNote = ` <b style="color:var(--red)">${v.wrong} pts</b>`;
+      }
+    } else if(i===0){
+      // R7.1 Fix 3: WSF row now mirrors WSN partial-credit display logic and
+      // shows the +N pts note. Previously the WSF row showed only ✓ with no
+      // points note, so a +18 (team+pos+scorer) WSF correct looked unlabeled.
+      const goalH1 = GOALS.find(g=>g.min<45);
+      if(!goalH1){
+        actualText = 'No goal in first half';
+        if(pick && pick.noGoalH1){
+          ok = 'full';
+          pointsNote = ` <b style="color:var(--green)">+${CFG.WSN.who_scores_first_no_goal_h1} pts</b>`;
+        } else {
+          ok = 'wrong';
+        }
+      } else {
+        actualText = `${teamName(goalH1.team)} · ${groupLabel(goalH1.group)} — ${P[goalH1.scorer].name} @${goalH1.min}'`;
+        const teamOK  = !!(pick && !pick.noGoalH1 && !pick.nmg && pick.team===goalH1.team);
+        const groupOK = !!(pick && !pick.noGoalH1 && !pick.nmg && pick.group===goalH1.group);
+        // Scorer-in-lineup bonus only credits when the patron actually made a
+        // team/position pick — null picks (no pick made) get 0, matching computeWSN.
+        const isTeamPosPick = !!(pick && !pick.noGoalH1 && !pick.nmg);
+        if(teamOK && groupOK)      ok = 'full';
+        else if(teamOK)            ok = 'partial';
+        else                       ok = 'wrong';
+        let pts = 0;
+        if(teamOK)            pts += CFG.WSN.correct_team;
+        if(teamOK && groupOK) pts += CFG.WSN.correct_team_and_position;
+        if(isTeamPosPick && patron.lineup.includes(goalH1.scorer))
+          pts += CFG.WSN.scorer_in_lineup_auto_bonus;
+        if(pts > 0) pointsNote = ` <b style="color:var(--green)">+${pts} pts</b>`;
+      }
+    } else {
+      if(!goal){
+        // R6 Option A: window with no future goal target. Team/pos pick can't match.
+        actualText = 'No further goal';
+        ok = 'wrong';
+      } else {
+        actualText = `${teamName(goal.team)} · ${groupLabel(goal.group)} — ${P[goal.scorer].name} @${goal.min}'`;
+        // R7 BUG 3: distinguish full / partial / wrong. Team-only correct earns
+        // +7; team+position correct earns +12; scorer-in-lineup bonus +6 is
+        // additive regardless. Show the points so the patron sees the credit.
+        const teamOK  = !!(pick && !pick.noGoalH1 && !pick.nmg && pick.team===goal.team);
+        const groupOK = !!(pick && !pick.noGoalH1 && !pick.nmg && pick.group===goal.group);
+        // Scorer-in-lineup bonus only credits when the patron made a team/pos
+        // pick (matches computeWSN, which skips null picks before scoring).
+        const isTeamPosPick = !!(pick && !pick.noGoalH1 && !pick.nmg);
+        if(teamOK && groupOK)      ok = 'full';
+        else if(teamOK)            ok = 'partial';
+        else                       ok = 'wrong';
+        let pts = 0;
+        if(teamOK)            pts += CFG.WSN.correct_team;
+        if(teamOK && groupOK) pts += CFG.WSN.correct_team_and_position;
+        if(isTeamPosPick && patron.lineup.includes(goal.scorer))
+          pts += CFG.WSN.scorer_in_lineup_auto_bonus;
+        if(pts > 0) pointsNote = ` <b style="color:var(--green)">+${pts} pts</b>`;
+      }
+    }
+    const mark = ok === 'full' ?
+      '<span style="color:var(--green);font-weight:800">✓</span>' :
+      ok === 'partial' ?
+      '<span style="color:var(--gold);font-weight:800">✓</span>' :
+      ok === true ?
+      '<span style="color:var(--green);font-weight:800">✓</span>' :
+      '<span style="color:var(--red);font-weight:800">✗</span>';
+    rows.push(`<div class="kv" style="align-items:flex-start;font-size:14.5px">
+      <span style="flex:1"><b>${windowName(i)}</b><br>
+        <span class="muted">You picked:</span> ${pickText}<br>
+        <span class="muted">Actually:</span> ${actualText}${pointsNote}</span>
+      <b style="font-size:22px;line-height:1">${mark}</b></div>`);
+  }
+  return rows.length ? rows.join("") :
+    '<div class="muted">No Who Scores Next windows applicable.</div>';
+}
+
+function resultsScreen(){
+  const e=patronEntity(); const t=entityTotals(e,90);
+  const all = allEntities();
+  const allTotals = all.map(x => ({x, t:entityTotals(x,90)}));
+  allTotals.sort((a,b)=> b.t.total - a.t.total);
+  const rank = allTotals.findIndex(b=>b.x.isMe)+1;
+  const ppF  = allTotals.map(x=>x.t.pp);
+  const fpF  = allTotals.map(x=>x.t.fp);
+  const wsnF = allTotals.map(x=>x.t.wsn);
+  const totF = allTotals.map(x=>x.t.total);
+  const line=(arr)=>arr.map(([l,n,extra])=>`<div class="kv">
+    <span>${esc(l)}${extra?` <span class="muted">— ${esc(extra)}</span>`:""}</span>
+    <b class="${n>0?'ok':(n<0?'bad':'')}">${n>0?"+":""}${fmt(n)}</b></div>`).join("");
+  const catHead = (label, val) =>
+    `<h3 style="display:flex;justify-content:space-between;align-items:baseline">
+      <span>${label}</span>
+      <span style="color:var(--gold);font-size:18px;font-weight:800">${fmt(val)}</span></h3>`;
+  return card(`<h2>Full-Time — ${esc(scoreStr())}</h2>
+    <p class="lede">${esc(S.patron.teamName||"Your Team")} finished
+      <b>#${rank} of ${allTotals.length}</b> on the leaderboard.</p>
+    <div style="text-align:center;margin:10px 0 10px">
+      <div class="bigtot">${fmt(t.total)}</div>
+      <div class="muted" style="margin-top:2px">Total Points</div>
+    </div>
+    ${scorebarHTML(t.total, totF)}
+    ${milestoneSummary()}
+    ${catHead("Prediction Points", t.pp)}
+    ${scorebarHTML(t.pp, ppF)}
+    ${line(t._pp.lines)}
+    ${catHead("Fantasy Points", t.fp)}
+    ${scorebarHTML(t.fp, fpF)}
+    ${line(t._fp.lines)}
+    ${catHead("Who Scores Next? Points", t.wsn)}
+    ${scorebarHTML(t.wsn, wsnF)}
+    ${wsnRecapHTML(e)}
+    <div class="btnrow">
+      <button class="btn" onclick="restartDemo()">Run the demo again</button>
+      <button class="btn ghost" onclick="setView('TV')">Show Leaderboard</button></div>`);
+}
+
+/* ---------------------------------------------------------------------------
+   11. RENDER ROOT + PRESENTER STATUS
+   --------------------------------------------------------------------------- */
+function render(){
+  $("stage").innerHTML = (S.view==="TV") ? tvView() : patronView();
+  if(S.activeWindow) renderWindow();
+  if(S.view==="TV"){ const tk=$("tk"); if(tk) tk.scrollTop=0; }
+}
+function updatePresenterStatus(){
+  let next="—";
+  for(let i=S.tIndex;i<TIMELINE.length;i++){
+    const ev=TIMELINE[i];
+    if(["GOAL","HALFTIME","FULLTIME","WHO_SCORES_FIRST"].includes(ev.type)){
+      next=`${ev.min}' ${ev.type.replace(/_/g," ")}`; break; }
+  }
+  let st="";
+  if(S.phase==="INTRO") st="Patron is on the welcome screen.";
+  else if(S.phase==="RULES") st="Patron is reading the rules.";
+  else if(S.phase==="BUILD") st="Patron is building a lineup.";
+  else if(S.phase==="READY") st="<b>Ready.</b> Press ▶ Play (or Next Event →) to kick off.";
+  else if(S.phase==="FT") st="<b>Full-Time.</b> Scoring settled.";
+  else st=`<b>${S.clock.minute}'</b> · ${esc(scoreStr())} · next: ${esc(next)}`+
+    (S.activeWindow?` · <span style="color:var(--gold)">window open</span>`:"");
+  $("pStatus").innerHTML=st;
+  const mini=$("pStatusMini");
+  if(mini){
+    mini.textContent = S.phase==="INTRO" ? "Welcome screen"
+      : S.phase==="RULES" ? "Reading rules"
+      : S.phase==="BUILD" ? "Building lineup"
+      : S.phase==="READY" ? "Ready — press ▶ Play"
+      : S.phase==="FT" ? "Full-Time — scoring settled"
+      : S.clock.minute+"' · "+scoreStr()+(S.activeWindow?" · window open":"");
+  }
+  const pn=$("pNext"); if(pn) pn.disabled=(S.phase==="INTRO"||S.phase==="RULES"||S.phase==="BUILD"||S.phase==="FT");
+}
+
+function restartDemo(){
+  stopClock(); clearInterval(S._winTimer);
+  S.phase="INTRO"; S.step=0; S.tIndex=0; S.ticker=[]; S.activeWindow=null;
+  S.clock={minute:0,running:false,speed:S.clock.speed,msPerMin:1000};
+  S.patron={ teamName:"", captainPos:null, captainId:null,
+    lineup:{FORWARD:[],MIDFIELDER:[],DEFENDER:[],KEEPER:[]},
+    prediction:{winner:null,ph:1,pa:1,ou25:null,possTeam:null,cornersTeam:null,
+                redCard:null,yellowOU:null,sotOU:null,ht:null},
+    arrival:"on_time", wsn:[null,null,null,null,null,null], _htSwappedOut:[] };
+  $("overlayRoot").innerHTML="";
+  $("helpRoot").innerHTML="";
+  setBodyScrollLock();
+  $("pPlay").disabled=false; $("pPause").disabled=true; $("pSkip").disabled=true;
+  setView("PATRON"); updatePresenterStatus();
+}
+
+/* ---------------------------------------------------------------------------
+   12. QR CODE — "Scan to play". Self-contained, offline (no CDN): a compact
+   port of Nayuki's public-domain QR Code generator (byte mode, ECC Medium).
+   Works on a bar Wi-Fi or the presenter's phone hotspot with no internet.
+   --------------------------------------------------------------------------- */
+var QRC=(function(){
+  "use strict";
+  // ECC = Medium. Index 0 is padding (unused); entries are versions 1..40.
+  var ECB =[-1,10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26,26,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28];
+  var NBLK=[-1, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5, 5, 8, 9, 9,10,10,11,13,14,16,17,17,18,20,21,23,25,26,28,29,31,33,35,37,38,40,43,45,47,49];
+
+  function getBit(x,i){ return ((x>>>i)&1)!=0; }
+  function rsMul(x,y){ var z=0;
+    for(var i=7;i>=0;i--){ z=(z<<1)^((z>>>7)*0x11D); z^=((y>>>i)&1)*x; }
+    return z&0xFF; }
+  function rsDivisor(degree){
+    var result=[]; for(var i=0;i<degree-1;i++) result.push(0); result.push(1);
+    var root=1;
+    for(var i=0;i<degree;i++){
+      for(var j=0;j<result.length;j++){
+        result[j]=rsMul(result[j],root);
+        if(j+1<result.length) result[j]^=result[j+1];
+      }
+      root=rsMul(root,2);
+    }
+    return result;
+  }
+  function rsRemainder(data,divisor){
+    var result=divisor.map(function(){return 0;});
+    data.forEach(function(b){
+      var factor=b ^ result.shift();
+      result.push(0);
+      divisor.forEach(function(d,i){ result[i]^=rsMul(d,factor); });
+    });
+    return result;
+  }
+  function getNumRawDataModules(ver){
+    var result=(16*ver+128)*ver+64;
+    if(ver>=2){
+      var numAlign=Math.floor(ver/7)+2;
+      result-=(25*numAlign-10)*numAlign-55;
+      if(ver>=7) result-=36;
+    }
+    return result;
+  }
+  function getNumDataCodewords(ver){
+    return Math.floor(getNumRawDataModules(ver)/8) - ECB[ver]*NBLK[ver];
+  }
+
+  function QrCode(ver,dataCodewords,msk){
+    this.version=ver; this.size=ver*4+17;
+    this.modules=[]; this.isFunction=[];
+    for(var i=0;i<this.size;i++){
+      var a=[],b=[];
+      for(var j=0;j<this.size;j++){ a.push(false); b.push(false); }
+      this.modules.push(a); this.isFunction.push(b);
+    }
+    this.drawFunctionPatterns();
+    var all=this.addEccAndInterleave(dataCodewords);
+    this.drawCodewords(all);
+    if(msk==-1){
+      var minPenalty=1e9;
+      for(var m=0;m<8;m++){
+        this.applyMask(m); this.drawFormatBits(m);
+        var p=this.getPenaltyScore();
+        if(p<minPenalty){ msk=m; minPenalty=p; }
+        this.applyMask(m);
+      }
+    }
+    this.mask=msk;
+    this.applyMask(msk);
+    this.drawFormatBits(msk);
+  }
+  QrCode.prototype.setFn=function(x,y,d){ this.modules[y][x]=d; this.isFunction[y][x]=true; };
+  QrCode.prototype.drawFunctionPatterns=function(){
+    for(var i=0;i<this.size;i++){ this.setFn(6,i,i%2==0); this.setFn(i,6,i%2==0); }
+    this.drawFinder(3,3); this.drawFinder(this.size-4,3); this.drawFinder(3,this.size-4);
+    var ap=this.alignPositions(), n=ap.length;
+    for(var i=0;i<n;i++) for(var j=0;j<n;j++)
+      if(!((i==0&&j==0)||(i==0&&j==n-1)||(i==n-1&&j==0))) this.drawAlign(ap[i],ap[j]);
+    this.drawFormatBits(0); this.drawVersion();
+  };
+  QrCode.prototype.drawFormatBits=function(mask){
+    var data=(0<<3)|mask, rem=data;          // Medium formatBits = 0
+    for(var i=0;i<10;i++) rem=(rem<<1)^((rem>>>9)*0x537);
+    var bits=((data<<10)|rem)^0x5412;
+    for(var i=0;i<=5;i++) this.setFn(8,i,getBit(bits,i));
+    this.setFn(8,7,getBit(bits,6)); this.setFn(8,8,getBit(bits,7));
+    this.setFn(7,8,getBit(bits,8));
+    for(var i=9;i<15;i++) this.setFn(14-i,8,getBit(bits,i));
+    for(var i=0;i<8;i++) this.setFn(this.size-1-i,8,getBit(bits,i));
+    for(var i=8;i<15;i++) this.setFn(8,this.size-15+i,getBit(bits,i));
+    this.setFn(8,this.size-8,true);
+  };
+  QrCode.prototype.drawVersion=function(){
+    if(this.version<7) return;
+    var rem=this.version;
+    for(var i=0;i<12;i++) rem=(rem<<1)^((rem>>>11)*0x1F25);
+    var bits=this.version<<12|rem;
+    for(var i=0;i<18;i++){
+      var c=getBit(bits,i), a=this.size-11+i%3, b=Math.floor(i/3);
+      this.setFn(a,b,c); this.setFn(b,a,c);
+    }
+  };
+  QrCode.prototype.drawFinder=function(x,y){
+    for(var dy=-4;dy<=4;dy++) for(var dx=-4;dx<=4;dx++){
+      var dist=Math.max(Math.abs(dx),Math.abs(dy)), xx=x+dx, yy=y+dy;
+      if(0<=xx&&xx<this.size&&0<=yy&&yy<this.size) this.setFn(xx,yy,dist!=2&&dist!=4);
+    }
+  };
+  QrCode.prototype.drawAlign=function(x,y){
+    for(var dy=-2;dy<=2;dy++) for(var dx=-2;dx<=2;dx++)
+      this.setFn(x+dx,y+dy,Math.max(Math.abs(dx),Math.abs(dy))!=1);
+  };
+  QrCode.prototype.alignPositions=function(){
+    if(this.version==1) return [];
+    var n=Math.floor(this.version/7)+2;
+    var step=(this.version==32)?26:Math.ceil((this.version*4+4)/(n*2-2))*2;
+    var result=[6];
+    for(var pos=this.size-7; result.length<n; pos-=step) result.splice(1,0,pos);
+    return result;
+  };
+  QrCode.prototype.addEccAndInterleave=function(data){
+    var ver=this.version, numBlocks=NBLK[ver], blockEccLen=ECB[ver];
+    var rawCodewords=Math.floor(getNumRawDataModules(ver)/8);
+    var numShort=numBlocks-rawCodewords%numBlocks;
+    var shortLen=Math.floor(rawCodewords/numBlocks);
+    var blocks=[], rsDiv=rsDivisor(blockEccLen);
+    for(var i=0,k=0;i<numBlocks;i++){
+      var dat=data.slice(k, k+shortLen-blockEccLen+(i<numShort?0:1));
+      k+=dat.length;
+      var ecc=rsRemainder(dat,rsDiv);
+      if(i<numShort) dat.push(0);
+      blocks.push(dat.concat(ecc));
+    }
+    var result=[];
+    for(var i=0;i<blocks[0].length;i++) for(var j=0;j<blocks.length;j++)
+      if(i!=shortLen-blockEccLen || j>=numShort) result.push(blocks[j][i]);
+    return result;
+  };
+  QrCode.prototype.drawCodewords=function(data){
+    var i=0;
+    for(var right=this.size-1; right>=1; right-=2){
+      if(right==6) right=5;
+      for(var vert=0;vert<this.size;vert++) for(var j=0;j<2;j++){
+        var x=right-j, up=((right+1)&2)==0, y=up?this.size-1-vert:vert;
+        if(!this.isFunction[y][x] && i<data.length*8){
+          this.modules[y][x]=getBit(data[i>>>3],7-(i&7)); i++;
+        }
+      }
+    }
+  };
+  QrCode.prototype.applyMask=function(mask){
+    for(var y=0;y<this.size;y++) for(var x=0;x<this.size;x++){
+      var inv;
+      switch(mask){
+        case 0: inv=(x+y)%2==0; break;
+        case 1: inv=y%2==0; break;
+        case 2: inv=x%3==0; break;
+        case 3: inv=(x+y)%3==0; break;
+        case 4: inv=(Math.floor(x/3)+Math.floor(y/2))%2==0; break;
+        case 5: inv=(x*y%2)+(x*y%3)==0; break;
+        case 6: inv=((x*y%2)+(x*y%3))%2==0; break;
+        case 7: inv=(((x+y)%2)+(x*y%3))%2==0; break;
+      }
+      if(!this.isFunction[y][x] && inv) this.modules[y][x]=!this.modules[y][x];
+    }
+  };
+  QrCode.prototype.fpAdd=function(run,h){ if(h[0]==0) run+=this.size; h.pop(); h.unshift(run); };
+  QrCode.prototype.fpCount=function(h){
+    var n=h[1];
+    var core = n>0 && h[2]==n && h[3]==n*3 && h[4]==n && h[5]==n;
+    return (core && h[0]>=n*4 && h[6]>=n ?1:0) + (core && h[6]>=n*4 && h[0]>=n ?1:0);
+  };
+  QrCode.prototype.fpTerm=function(col,len,h){
+    if(col){ this.fpAdd(len,h); len=0; }
+    len+=this.size; this.fpAdd(len,h); return this.fpCount(h);
+  };
+  QrCode.prototype.getPenaltyScore=function(){
+    var result=0, size=this.size, M=this.modules;
+    for(var y=0;y<size;y++){
+      var col=false, run=0, h=[0,0,0,0,0,0,0];
+      for(var x=0;x<size;x++){
+        if(M[y][x]==col){ run++; if(run==5) result+=3; else if(run>5) result++; }
+        else { this.fpAdd(run,h); if(!col) result+=this.fpCount(h)*40; col=M[y][x]; run=1; }
+      }
+      result+=this.fpTerm(col,run,h)*40;
+    }
+    for(var x=0;x<size;x++){
+      var col=false, run=0, h=[0,0,0,0,0,0,0];
+      for(var y=0;y<size;y++){
+        if(M[y][x]==col){ run++; if(run==5) result+=3; else if(run>5) result++; }
+        else { this.fpAdd(run,h); if(!col) result+=this.fpCount(h)*40; col=M[y][x]; run=1; }
+      }
+      result+=this.fpTerm(col,run,h)*40;
+    }
+    for(var y=0;y<size-1;y++) for(var x=0;x<size-1;x++){
+      var c=M[y][x];
+      if(c==M[y][x+1]&&c==M[y+1][x]&&c==M[y+1][x+1]) result+=3;
+    }
+    var dark=0;
+    for(var y=0;y<size;y++) for(var x=0;x<size;x++) if(M[y][x]) dark++;
+    var total=size*size;
+    result += (Math.ceil(Math.abs(dark*20-total*10)/total)-1)*10;
+    return result;
+  };
+
+  function toUtf8(s){
+    var out=[];
+    for(var i=0;i<s.length;i++){
+      var c=s.charCodeAt(i);
+      if(c<0x80) out.push(c);
+      else if(c<0x800) out.push(0xC0|(c>>6),0x80|(c&0x3F));
+      else if(c<0xD800||c>=0xE000) out.push(0xE0|(c>>12),0x80|((c>>6)&0x3F),0x80|(c&0x3F));
+      else { i++; var c2=s.charCodeAt(i);
+        var cp=0x10000+((c-0xD800)<<10)+(c2-0xDC00);
+        out.push(0xF0|(cp>>18),0x80|((cp>>12)&0x3F),0x80|((cp>>6)&0x3F),0x80|(cp&0x3F)); }
+    }
+    return out;
+  }
+  function encodeText(text){
+    var bytes=toUtf8(text), ver, capBits=0;
+    for(ver=1;ver<=40;ver++){
+      var cap=getNumDataCodewords(ver)*8;
+      var cc=(ver<=9)?8:16;
+      if(4+cc+bytes.length*8 <= cap){ capBits=cap; break; }
+    }
+    if(ver>40) throw new Error("Data too long for QR");
+    var bb=[];
+    function put(val,len){ for(var i=len-1;i>=0;i--) bb.push((val>>>i)&1); }
+    put(0x4,4);
+    put(bytes.length,(ver<=9)?8:16);
+    bytes.forEach(function(b){ put(b,8); });
+    put(0,Math.min(4,capBits-bb.length));
+    put(0,(8-bb.length%8)%8);
+    for(var pad=0xEC; bb.length<capBits; pad^=0xEC^0x11) put(pad,8);
+    var dat=new Array(capBits/8).fill(0);
+    bb.forEach(function(bit,i){ if(bit) dat[i>>>3]|=1<<(7-(i&7)); });
+    return new QrCode(ver,dat,-1);
+  }
+  function draw(qr,canvas,border,scale){
+    var dim=qr.size+border*2;
+    canvas.width=dim*scale; canvas.height=dim*scale;
+    var ctx=canvas.getContext("2d");
+    ctx.fillStyle="#FFFFFF"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="#000000";
+    for(var y=0;y<qr.size;y++) for(var x=0;x<qr.size;x++)
+      if(qr.modules[y][x]) ctx.fillRect((x+border)*scale,(y+border)*scale,scale,scale);
+  }
+  return {encodeText:encodeText, draw:draw};
+})();
+
+// The presenter types ONLY the laptop's LAN IP; the demo URL is built as
+// http://<IP>:8123/ (8123 = the http.server port; server binding unchanged).
+var QR_PORT=8123;
+var QR_STATE={ip:null};
+function isValidIp(s){
+  s=(s||"").trim();
+  var p=s.split(".");
+  if(p.length!==4) return false;
+  return p.every(function(o){ return /^\d{1,3}$/.test(o) && Number(o)<=255; });
+}
+function qrBuildUrl(ip){ return "http://"+ip.trim()+":"+QR_PORT+"/"; }
+function guessLanIp(){
+  try{
+    var h=location.hostname;
+    if(isValidIp(h) && !/^127\./.test(h) && h!=="0.0.0.0") return h;
+  }catch(e){}
+  return "";
+}
+function openQR(){ if(QR_STATE.ip==null) QR_STATE.ip=guessLanIp(); renderQR(); }
+function closeQR(){ $("qrRoot").innerHTML=""; }
+function qrSetIp(v){ QR_STATE.ip=(v||"").trim(); renderQR(); }
+function renderQR(){
+  var ip=QR_STATE.ip||"";
+  var valid=isValidIp(ip);
+  var url=valid?qrBuildUrl(ip):null;
+  var hasError=ip.length>0 && !valid;
+  $("qrRoot").innerHTML=`<div class="scrim" onclick="if(event.target===this)closeQR()">
+    <div class="window">
+      <div class="wt">Demo Entry</div>
+      <h2>Scan to play</h2>
+      <p class="muted">Type the laptop's Wi-Fi/LAN IP address below. The link and
+      QR build automatically — no URL to hand-edit. Phone and laptop must be on
+      the same network (or the presenter's hotspot).</p>
+      <div class="qrwrap">
+        <div class="qrbox"><canvas id="qrCanvas"></canvas></div>
+        <div class="qrlabel">Scan to play</div>
+        <div class="qrurl">${valid?esc(url):"&nbsp;"}</div>
+      </div>
+      <label class="note" for="qrIp">Laptop LAN IP (e.g. 192.168.1.23)</label>
+      <input class="qrinput" id="qrIp" value="${esc(ip)}" inputmode="decimal"
+        onchange="qrSetIp(this.value)" onkeyup="if(event.key==='Enter')qrSetIp(this.value)"
+        placeholder="192.168.1.23">
+      ${hasError?`<div class="qrerr">Not a valid IPv4 address — enter four numbers
+        like <b>192.168.1.23</b> (find it via <b>ipconfig getifaddr en0</b> on
+        Mac, <b>ipconfig</b> on Windows).</div>`:
+        `<div class="note">Builds <b>http://&lt;IP&gt;:${QR_PORT}/</b> · the server
+         must be running on port ${QR_PORT}.</div>`}
+      <div class="btnrow"><button class="btn" onclick="closeQR()">Done</button></div>
+    </div></div>`;
+  var c=$("qrCanvas");
+  if(!valid){
+    c.width=300; c.height=300;
+    var x=c.getContext("2d");
+    x.fillStyle="#fff"; x.fillRect(0,0,300,300);
+    x.fillStyle="#888"; x.font="15px sans-serif"; x.textAlign="center";
+    x.fillText("Enter the laptop's LAN IP",150,145);
+    x.fillText("to generate the QR code",150,168);
+    return;
+  }
+  try{
+    QRC.draw(QRC.encodeText(url), c, 4, 6);
+  }catch(e){
+    c.width=300; c.height=80;
+    var x=c.getContext("2d");
+    x.fillStyle="#fff"; x.fillRect(0,0,300,80);
+    x.fillStyle="#000"; x.font="14px sans-serif"; x.textAlign="center";
+    x.fillText("Could not generate QR for that address",150,44);
+  }
+}
+
+/* boot */
+setupSpeedButtons();
+render();
+updatePresenterStatus();
+</script>
+</body>
+</html>
